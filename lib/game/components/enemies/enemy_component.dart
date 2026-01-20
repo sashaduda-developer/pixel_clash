@@ -4,6 +4,7 @@ import 'package:flame/components.dart';
 import 'package:flame/collisions.dart';
 import 'package:flutter/material.dart';
 
+import 'package:pixel_clash/game/components/combat/combat_event.dart';
 import 'package:pixel_clash/game/components/combat/damageable.dart';
 import 'package:pixel_clash/game/components/player/player_component.dart';
 import 'package:pixel_clash/game/pixel_clash_game.dart';
@@ -42,6 +43,22 @@ class EnemyComponent extends PositionComponent
 
   double _attackCooldown = 0;
 
+  // Замедления/контроль.
+  double _slowLeft = 0;
+  double _slowPct = 0;
+  double _freezeLeft = 0;
+  double _stunLeft = 0;
+  double _burnLeft = 0;
+  double _burnPhase = 0;
+  double _burnFxTimer = 0;
+  double _bleedLeft = 0;
+  double _bleedFxTimer = 0;
+
+  // Последний атакующий (для EnemyKilledEvent).
+  PositionComponent? _lastAttacker;
+
+  final List<_DotEffect> _dots = <_DotEffect>[];
+
   final Color _baseColor = const Color(0xFFE57373);
   final Color _flashColor = const Color(0xFFFFCDD2);
 
@@ -75,14 +92,12 @@ class EnemyComponent extends PositionComponent
     _attackCooldown = max(0, _attackCooldown - dt);
     _flashTimer = max(0, _flashTimer - dt);
 
-    final p = game.player;
-    if (p == null || p.isRemoving) return;
+    _updateStatusTimers(dt);
+    _updateDotFx(dt);
 
-    final dir = (p.position - position);
-    if (dir.length2 > 0.001) {
-      dir.normalize();
-      position += dir * speed * dt;
-    }
+    _updateDots(dt);
+
+    _updateMovement(dt);
   }
 
   @override
@@ -98,10 +113,18 @@ class EnemyComponent extends PositionComponent
     );
     canvas.drawRect(rect, bodyPaint);
 
+    if (_freezeLeft > 0) {
+      _renderFreezeOverlay(canvas, rect);
+    }
+
+    if (_burnLeft > 0) {
+      _renderBurnOverlay(canvas, rect);
+    }
+
     _renderHpBar(canvas);
   }
 
-  /// Рисуем HP бар в локальных координатах врага (над головой).
+  /// Рисуем HP-бар над врагом.
   void _renderHpBar(Canvas canvas) {
     final maxHp = _maxHp;
     final curHp = _hp.clamp(0, _maxHp);
@@ -137,6 +160,162 @@ class EnemyComponent extends PositionComponent
     );
   }
 
+  /// Визуал горения: оранжевая пульсация поверх тела.
+  void _renderBurnOverlay(Canvas canvas, Rect rect) {
+    final t = (sin(_burnPhase) * 0.5 + 0.5).clamp(0.0, 1.0);
+    final alpha = 0.25 + 0.30 * t;
+
+    final paint = Paint()..color = const Color(0xFFFF8A50).withValues(alpha: alpha);
+
+    canvas.drawRect(rect, paint);
+  }
+
+  /// Визуал заморозки: голубая маска поверх тела.
+  void _renderFreezeOverlay(Canvas canvas, Rect rect) {
+    const alpha = 0.35;
+    final paint = Paint()..color = const Color(0xFF8FD3FF).withValues(alpha: alpha);
+    canvas.drawRect(rect, paint);
+  }
+
+  /// Обновление таймеров статусов/контролей.
+  void _updateStatusTimers(double dt) {
+    _slowLeft = max(0, _slowLeft - dt);
+    _freezeLeft = max(0, _freezeLeft - dt);
+    _stunLeft = max(0, _stunLeft - dt);
+    _burnLeft = max(0, _burnLeft - dt);
+    _bleedLeft = max(0, _bleedLeft - dt);
+    _burnPhase += dt * 8.0;
+  }
+
+  /// Визуальные эффекты дотов (поджог/кровотечение).
+  void _updateDotFx(double dt) {
+    if (_burnLeft > 0) {
+      _burnFxTimer -= dt;
+      if (_burnFxTimer <= 0) {
+        _burnFxTimer = 0.16;
+        spawnHitParticles(
+          parent: game.worldMap,
+          position: position,
+          color: const Color(0xFFFF8A50),
+          count: 8,
+        );
+      }
+    }
+
+    if (_bleedLeft > 0) {
+      _bleedFxTimer -= dt;
+      if (_bleedFxTimer <= 0) {
+        _bleedFxTimer = 0.18;
+        spawnHitParticles(
+          parent: game.worldMap,
+          position: position,
+          color: const Color(0xFFFF5252),
+          count: 8,
+        );
+      }
+    }
+  }
+
+  /// Движение к игроку с учетом контроля/замедления.
+  void _updateMovement(double dt) {
+    final p = game.player;
+    if (p == null || p.isRemoving) return;
+
+    if (_freezeLeft > 0 || _stunLeft > 0) return;
+
+    final dir = (p.position - position);
+    if (dir.length2 > 0.001) {
+      dir.normalize();
+      final slowMult = (_slowLeft > 0) ? (1.0 - _slowPct) : 1.0;
+      position += dir * speed * slowMult * dt;
+    }
+  }
+
+  // ===== status effects =====
+
+  /// Замедляет врага на время (0..1).
+  void applySlow(double pct, double durationSec) {
+    if (pct <= 0 || durationSec <= 0) return;
+    _slowPct = max(_slowPct, pct.clamp(0.0, 0.95));
+    _slowLeft = max(_slowLeft, durationSec);
+  }
+
+  /// Заморозка: полный контроль-лок на время.
+  void applyFreeze(double durationSec) {
+    if (durationSec <= 0) return;
+    _freezeLeft = max(_freezeLeft, durationSec);
+  }
+
+  /// Оглушение: полный контроль-лок на время.
+  void applyStun(double durationSec) {
+    if (durationSec <= 0) return;
+    _stunLeft = max(_stunLeft, durationSec);
+  }
+
+  /// Дот с суммарным уроном от базового урона.
+  void applyDot({
+    required String id,
+    required int baseDamage,
+    required double totalDamagePct,
+    required double durationSec,
+    required double tickSec,
+    required PositionComponent? attacker,
+  }) {
+    if (baseDamage <= 0) return;
+    if (totalDamagePct <= 0 || durationSec <= 0 || tickSec <= 0) return;
+
+    final totalDamage = max(1, (baseDamage * totalDamagePct).round());
+    final ticks = max(1, (durationSec / tickSec).ceil());
+    final damagePerTick = max(1, (totalDamage / ticks).round());
+
+    _dots.removeWhere((d) => d.id == id);
+    _dots.add(
+      _DotEffect(
+        id: id,
+        timeLeft: durationSec,
+        tickSec: tickSec,
+        tickLeft: tickSec,
+        damagePerTick: damagePerTick,
+        attacker: attacker,
+      ),
+    );
+
+    if (id == 'ignite') {
+      _burnLeft = max(_burnLeft, durationSec);
+      _burnFxTimer = 0;
+      return;
+    }
+
+    if (id == 'bleed') {
+      _bleedLeft = max(_bleedLeft, durationSec);
+      _bleedFxTimer = 0;
+    }
+  }
+
+  void _updateDots(double dt) {
+    if (_dots.isEmpty) return;
+
+    for (final d in List<_DotEffect>.from(_dots)) {
+      d.timeLeft -= dt;
+      d.tickLeft -= dt;
+
+      if (d.tickLeft <= 0) {
+        d.tickLeft += d.tickSec;
+        takeDamageFromHit(
+          d.damagePerTick,
+          isCrit: false,
+          attacker: d.attacker,
+          sourceType: DamageSourceType.ability,
+          showHitEffects: false,
+        );
+      }
+
+      if (d.timeLeft <= 0) {
+        _dots.remove(d);
+      }
+    }
+  }
+
   @override
   void onCollisionStart(Set<Vector2> intersectionPoints, PositionComponent other) {
     super.onCollisionStart(intersectionPoints, other);
@@ -155,8 +334,13 @@ class EnemyComponent extends PositionComponent
 
   void _tryAttack(PlayerComponent player) {
     if (_attackCooldown > 0) return;
+    if (_freezeLeft > 0 || _stunLeft > 0) return;
     _attackCooldown = 0.7;
-    player.takeDamage(damage);
+    player.takeDamage(
+      damage,
+      attacker: this,
+      sourceType: DamageSourceType.melee,
+    );
   }
 
   @override
@@ -164,50 +348,49 @@ class EnemyComponent extends PositionComponent
     takeDamageFromHit(value, isCrit: false);
   }
 
-  /// Получение урона с флагом крита (для визуала).
-  /// Получение урона с флагом крита (для визуала).
-  /// fromChain нужен, чтобы:
-  /// 1) не вызывать chain-эффект повторно,
-  /// 2) не усиливать визуалы/хитстоп на каждой "прыжковой" молнии,
-  /// 3) и главное — чтобы не падало, если кто-то вызывает со старой сигнатурой.
   void takeDamageFromHit(
     int value, {
     required bool isCrit,
+    PositionComponent? attacker,
+    DamageSourceType sourceType = DamageSourceType.unknown,
+    bool showHitEffects = true,
   }) {
     if (_isDead) return;
 
-    // hit-stop (легкий, и чуть сильнее на крите)
-    // Для chain-ударов хит-стоп лучше не делать (иначе лаги/ступор).
-    game.requestHitStop(isCrit ? 0.016 : 0.012);
+    _lastAttacker = attacker;
 
-    // флэш
-    _flashTimer = _flashDuration;
+    if (showHitEffects) {
+      game.requestHitStop(isCrit ? 0.016 : 0.012);
 
-    // цифры урона
-    game.worldMap.add(
-      DamageNumberComponent(
-        position: position + Vector2(0, -18),
-        value: value,
-        color: isCrit ? const Color(0xFFFFD54F) : const Color(0xFFFFF176),
-        scaleFactor: isCrit ? 1.35 : 1.0,
-      ),
-    );
+      // Вспышка.
+      _flashTimer = _flashDuration;
 
-    // искры (на chain меньше, чтобы не забивать кадры)
-    spawnHitParticles(
-      parent: game.worldMap,
-      position: position,
-      color: isCrit ? const Color(0xFFFFD54F) : const Color(0xFFFFF176),
-      count: isCrit ? 18 : 12,
-    );
-
-    // ⚡ молния для крита (только на первом ударе)
-    if (isCrit) {
+      // Урон над головой.
       game.worldMap.add(
-        CritLightningComponent(
-          position: position + Vector2(0, -10),
+        DamageNumberComponent(
+          position: position + Vector2(0, -18),
+          value: value,
+          color: isCrit ? const Color(0xFFFFD54F) : const Color(0xFFFFF176),
+          scaleFactor: isCrit ? 1.35 : 1.0,
         ),
       );
+
+      // Частицы удара.
+      spawnHitParticles(
+        parent: game.worldMap,
+        position: position,
+        color: isCrit ? const Color(0xFFFFD54F) : const Color(0xFFFFF176),
+        count: isCrit ? 18 : 12,
+      );
+
+      // Молния при крите.
+      if (isCrit) {
+        game.worldMap.add(
+          CritLightningComponent(
+            position: position + Vector2(0, -10),
+          ),
+        );
+      }
     }
 
     _hp -= value;
@@ -223,8 +406,36 @@ class EnemyComponent extends PositionComponent
     game.scoreSystem.addScore(scoreReward);
     game.xpSystem.addXp(xpReward);
 
+    final killer = _lastAttacker;
+    if (killer is PlayerComponent) {
+      killer.buffs.emit(
+        EnemyKilledEvent(
+          killer: killer,
+          enemy: this,
+        ),
+      );
+    }
+
     Future<void>.microtask(() {
       if (!isRemoving) removeFromParent();
     });
   }
+}
+
+class _DotEffect {
+  _DotEffect({
+    required this.id,
+    required this.timeLeft,
+    required this.tickSec,
+    required this.tickLeft,
+    required this.damagePerTick,
+    required this.attacker,
+  });
+
+  final String id;
+  double timeLeft;
+  final double tickSec;
+  double tickLeft;
+  final int damagePerTick;
+  final PositionComponent? attacker;
 }

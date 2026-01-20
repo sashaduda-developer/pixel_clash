@@ -31,4 +31,7 @@ abstract class Buff {
 
   /// События, на которые реагирует баф.
   void onEvent(PlayerComponent owner, CombatEvent event);
+
+  /// Апдейт баффа по времени (таймеры/ауры/активные способности).
+  void onUpdate(PlayerComponent owner, double dt) {}
 }

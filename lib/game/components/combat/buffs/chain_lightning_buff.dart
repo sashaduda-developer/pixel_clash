@@ -84,7 +84,12 @@ class ChainLightningBuff extends Buff {
       );
 
       // Урон цепью: без крита.
-      next.takeDamageFromHit(chainDamage, isCrit: false);
+      next.takeDamageFromHit(
+        chainDamage,
+        isCrit: false,
+        attacker: owner,
+        sourceType: DamageSourceType.ability,
+      );
 
       currentPos = next.position.clone();
     }

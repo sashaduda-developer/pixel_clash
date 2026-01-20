@@ -39,12 +39,6 @@ class HeroSelectOverlay extends StatelessWidget {
                       height: 1.2,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    '0.1: движение, мобы, таймер, score, threat.\nДальше: автоатака, XP, апгрейды, ключи и босс.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.white70),
-                  ),
                   const SizedBox(height: 16),
                   _HeroButton(
                     title: l10n.t('hero_ranger_title'),
@@ -56,6 +50,18 @@ class HeroSelectOverlay extends StatelessWidget {
                     title: l10n.t('hero_knight_title'),
                     subtitle: l10n.t('hero_knight_subtitle'),
                     onTap: () async => _start(HeroType.knight),
+                  ),
+                  const SizedBox(height: 10),
+                  _HeroButton(
+                    title: l10n.t('hero_mage_title'),
+                    subtitle: l10n.t('hero_mage_subtitle'),
+                    onTap: () async => _start(HeroType.mage),
+                  ),
+                  const SizedBox(height: 10),
+                  _HeroButton(
+                    title: l10n.t('hero_ninja_title'),
+                    subtitle: l10n.t('hero_ninja_subtitle'),
+                    onTap: () async => _start(HeroType.ninja),
                   ),
                 ],
               ),
@@ -72,6 +78,9 @@ class HeroSelectOverlay extends StatelessWidget {
 
     if (!game.overlays.isActive(Overlays.hud)) {
       game.overlays.add(Overlays.hud);
+    }
+    if (!game.overlays.isActive(Overlays.abilities)) {
+      game.overlays.add(Overlays.abilities);
     }
   }
 }
