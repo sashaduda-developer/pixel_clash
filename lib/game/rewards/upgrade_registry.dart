@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:math';
 
+import 'package:pixel_clash/game/components/combat/buffs/altar_buffs.dart';
 import 'package:pixel_clash/game/components/combat/buffs/chain_lightning_buff.dart';
 import 'package:pixel_clash/game/components/combat/buffs/vampirism_buff.dart';
 import 'package:pixel_clash/game/components/combat/rarity.dart';
@@ -23,17 +25,32 @@ class UpgradeRegistry {
       'stat_hp': _applyStat,
       'stat_critChance': _applyStat,
       'stat_moveSpeed': _applyStat,
+      'stat_evasion': _applyStat,
 
       // ===== buffs =====
       'buff_chain_lightning': _applyChainLightning,
       'buff_vampirism': _applyVampirism,
+      'buff_freeze_aura': _applyFreezeAura,
+      'buff_ignite_on_hit': _applyIgniteOnHit,
+      'buff_slow_strikes': _applySlowStrikes,
+      'buff_thorns': _applyThorns,
+      'buff_piercing_projectiles': _applyPiercingProjectiles,
+      'buff_ricochet': _applyRicochet,
+      'buff_bleed_on_hit': _applyBleedOnHit,
+      'buff_soul_on_kill': _applySoulOnKill,
+      'buff_nova_burst': _applyNovaBurst,
+      'buff_poison_cloud': _applyPoisonCloud,
+      'buff_tempest_field': _applyTempestField,
+      'buff_reaper_mark': _applyReaperMark,
+
+      // ===== abilities =====
+      'ability_frost_ring': _applyFrostRing,
+      'ability_shockwave_stun': _applyShockwaveStun,
+      'ability_time_dilation': _applyTimeDilation,
 
       // ===== items =====
       'item_book_hardship': _applyBookHardship,
 
-      // stubs:
-      'buff_freeze_stub': (_, __, ___, ____) {},
-      'buff_thorns_stub': (_, __, ___, ____) {},
     };
   }
 
@@ -111,6 +128,16 @@ class UpgradeRegistry {
       case 'moveSpeed':
         p.stats.moveSpeed += delta;
         break;
+      case 'evasion':
+        p.stats.evasionChance = (p.stats.evasionChance + delta).clamp(0.0, 0.80);
+        break;
+      case 'maxMana':
+        p.stats.maxMana += delta;
+        p.stats.mana = (p.stats.mana + delta).clamp(0, p.stats.maxMana);
+        break;
+      case 'manaRegen':
+        p.stats.manaRegen += delta;
+        break;
     }
 
     // обновляем HUD (hp/maxHp/armor)
@@ -142,6 +169,295 @@ class UpgradeRegistry {
     final base = (ls is num) ? ls.toDouble() : 0.03;
 
     p.buffs.addBuff(VampirismBuff(rarity: rarity, baseLifesteal: base));
+  }
+
+  // ===== altar skills =====
+
+  void _applyFreezeAura(
+    PixelClashGame game,
+    Map<String, Object?> params,
+    PlayerBuildState build,
+    Rarity rarity,
+  ) {
+    final p = game.player;
+    if (p == null) return;
+    p.buffs.addBuff(
+      FreezeAuraBuff(
+        rarity: rarity,
+        maxLevel: _maxLevelFromParams(params),
+        levels: _levelsFromParams(params),
+      ),
+    );
+  }
+
+  void _applyIgniteOnHit(
+    PixelClashGame game,
+    Map<String, Object?> params,
+    PlayerBuildState build,
+    Rarity rarity,
+  ) {
+    final p = game.player;
+    if (p == null) return;
+    p.buffs.addBuff(
+      IgniteOnHitBuff(
+        rarity: rarity,
+        maxLevel: _maxLevelFromParams(params),
+        levels: _levelsFromParams(params),
+      ),
+    );
+  }
+
+  void _applySlowStrikes(
+    PixelClashGame game,
+    Map<String, Object?> params,
+    PlayerBuildState build,
+    Rarity rarity,
+  ) {
+    final p = game.player;
+    if (p == null) return;
+    p.buffs.addBuff(
+      SlowStrikesBuff(
+        rarity: rarity,
+        maxLevel: _maxLevelFromParams(params),
+        levels: _levelsFromParams(params),
+      ),
+    );
+  }
+
+  void _applyThorns(
+    PixelClashGame game,
+    Map<String, Object?> params,
+    PlayerBuildState build,
+    Rarity rarity,
+  ) {
+    final p = game.player;
+    if (p == null) return;
+    p.buffs.addBuff(
+      ThornsBuff(
+        rarity: rarity,
+        maxLevel: _maxLevelFromParams(params),
+        levels: _levelsFromParams(params),
+      ),
+    );
+  }
+
+  void _applyPiercingProjectiles(
+    PixelClashGame game,
+    Map<String, Object?> params,
+    PlayerBuildState build,
+    Rarity rarity,
+  ) {
+    final p = game.player;
+    if (p == null) return;
+    p.buffs.addBuff(
+      PiercingProjectilesBuff(
+        rarity: rarity,
+        maxLevel: _maxLevelFromParams(params),
+        levels: _levelsFromParams(params),
+      ),
+    );
+  }
+
+  void _applyRicochet(
+    PixelClashGame game,
+    Map<String, Object?> params,
+    PlayerBuildState build,
+    Rarity rarity,
+  ) {
+    final p = game.player;
+    if (p == null) return;
+    p.buffs.addBuff(
+      RicochetBuff(
+        rarity: rarity,
+        maxLevel: _maxLevelFromParams(params),
+        levels: _levelsFromParams(params),
+      ),
+    );
+  }
+
+  void _applyBleedOnHit(
+    PixelClashGame game,
+    Map<String, Object?> params,
+    PlayerBuildState build,
+    Rarity rarity,
+  ) {
+    final p = game.player;
+    if (p == null) return;
+    p.buffs.addBuff(
+      BleedOnHitBuff(
+        rarity: rarity,
+        maxLevel: _maxLevelFromParams(params),
+        levels: _levelsFromParams(params),
+      ),
+    );
+  }
+
+  void _applySoulOnKill(
+    PixelClashGame game,
+    Map<String, Object?> params,
+    PlayerBuildState build,
+    Rarity rarity,
+  ) {
+    final p = game.player;
+    if (p == null) return;
+    p.buffs.addBuff(
+      SoulOnKillBuff(
+        rarity: rarity,
+        maxLevel: _maxLevelFromParams(params),
+        levels: _levelsFromParams(params),
+      ),
+    );
+  }
+
+  void _applyNovaBurst(
+    PixelClashGame game,
+    Map<String, Object?> params,
+    PlayerBuildState build,
+    Rarity rarity,
+  ) {
+    final p = game.player;
+    if (p == null) return;
+    p.buffs.addBuff(
+      NovaBurstBuff(
+        rarity: rarity,
+        maxLevel: _maxLevelFromParams(params),
+        levels: _levelsFromParams(params),
+      ),
+    );
+  }
+
+  void _applyPoisonCloud(
+    PixelClashGame game,
+    Map<String, Object?> params,
+    PlayerBuildState build,
+    Rarity rarity,
+  ) {
+    final p = game.player;
+    if (p == null) return;
+    p.buffs.addBuff(
+      PoisonCloudBuff(
+        rarity: rarity,
+        maxLevel: _maxLevelFromParams(params),
+        levels: _levelsFromParams(params),
+      ),
+    );
+  }
+
+  void _applyTempestField(
+    PixelClashGame game,
+    Map<String, Object?> params,
+    PlayerBuildState build,
+    Rarity rarity,
+  ) {
+    final p = game.player;
+    if (p == null) return;
+    p.buffs.addBuff(
+      TempestFieldBuff(
+        rarity: rarity,
+        maxLevel: _maxLevelFromParams(params),
+        levels: _levelsFromParams(params),
+      ),
+    );
+  }
+
+  void _applyReaperMark(
+    PixelClashGame game,
+    Map<String, Object?> params,
+    PlayerBuildState build,
+    Rarity rarity,
+  ) {
+    final p = game.player;
+    if (p == null) return;
+    p.buffs.addBuff(
+      ReaperMarkBuff(
+        rarity: rarity,
+        maxLevel: _maxLevelFromParams(params),
+        levels: _levelsFromParams(params),
+      ),
+    );
+  }
+
+  void _applyFrostRing(
+    PixelClashGame game,
+    Map<String, Object?> params,
+    PlayerBuildState build,
+    Rarity rarity,
+  ) {
+    final p = game.player;
+    if (p == null) return;
+    p.buffs.addBuff(
+      FrostRingAbility(
+        rarity: rarity,
+        maxLevel: _maxLevelFromParams(params),
+        levels: _levelsFromParams(params),
+      ),
+    );
+    game.assignAbilitySlot('ability_frost_ring');
+  }
+
+  void _applyShockwaveStun(
+    PixelClashGame game,
+    Map<String, Object?> params,
+    PlayerBuildState build,
+    Rarity rarity,
+  ) {
+    final p = game.player;
+    if (p == null) return;
+    p.buffs.addBuff(
+      ShockwaveStunAbility(
+        rarity: rarity,
+        maxLevel: _maxLevelFromParams(params),
+        levels: _levelsFromParams(params),
+      ),
+    );
+    game.assignAbilitySlot('ability_shockwave_stun');
+  }
+
+  void _applyTimeDilation(
+    PixelClashGame game,
+    Map<String, Object?> params,
+    PlayerBuildState build,
+    Rarity rarity,
+  ) {
+    final p = game.player;
+    if (p == null) return;
+    p.buffs.addBuff(
+      TimeDilationAbility(
+        rarity: rarity,
+        maxLevel: _maxLevelFromParams(params),
+        levels: _levelsFromParams(params),
+      ),
+    );
+    game.assignAbilitySlot('ability_time_dilation');
+  }
+
+  int _maxLevelFromParams(Map<String, Object?> params) {
+    final raw = params['maxLevel'];
+    if (raw is num) return max(1, raw.toInt());
+    return 1;
+  }
+
+  Map<int, Map<String, Object?>> _levelsFromParams(Map<String, Object?> params) {
+    final raw = params['levels'];
+    final result = <int, Map<String, Object?>>{};
+
+    if (raw is List) {
+      for (final e in raw) {
+        if (e is! Map) continue;
+        final levelRaw = e['level'];
+        final valuesRaw = e['values'];
+        if (levelRaw is! num || valuesRaw is! Map) continue;
+        final level = levelRaw.toInt();
+        final values = <String, Object?>{};
+        for (final entry in valuesRaw.entries) {
+          final k = entry.key;
+          if (k is String) values[k] = entry.value;
+        }
+        result[level] = values;
+      }
+    }
+
+    return result;
   }
 
   void _applyBookHardship(

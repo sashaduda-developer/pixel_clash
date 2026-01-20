@@ -4,10 +4,10 @@ import 'dart:math';
 import 'package:flame/components.dart' hide Timer;
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
+import 'package:pixel_clash/game/components/combat/active_ability.dart';
 import 'package:pixel_clash/game/components/enemies/enemy_component.dart';
 import 'package:pixel_clash/game/components/interactables/altar_component.dart';
 import 'package:pixel_clash/game/components/interactables/chest_component.dart';
-import 'package:pixel_clash/game/components/pickups/threat_card.dart';
 import 'package:pixel_clash/game/components/player/hero_type.dart';
 import 'package:pixel_clash/game/components/player/player_component.dart';
 import 'package:pixel_clash/game/components/systems/biome_timer.dart';
@@ -63,6 +63,12 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
   final ValueNotifier<int> playerHp = ValueNotifier<int>(0);
   final ValueNotifier<int> playerMaxHp = ValueNotifier<int>(1);
   final ValueNotifier<int> playerArmor = ValueNotifier<int>(0);
+  final ValueNotifier<double> playerMana = ValueNotifier<double>(0);
+  final ValueNotifier<double> playerMaxMana = ValueNotifier<double>(1);
+
+  /// Слоты активных способностей (id или null).
+  final ValueNotifier<List<String?>> abilitySlots =
+      ValueNotifier<List<String?>>(List<String?>.filled(4, null));
 
   final ValueNotifier<int> level = ValueNotifier<int>(1);
   final ValueNotifier<double> xpProgress = ValueNotifier<double>(0);
@@ -160,16 +166,6 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     add(xpSystem);
     add(enemySpawner);
 
-    _scheduleThreatCards();
-
-    final altarRows = await (db.select(db.rewardDefinitions)
-          ..where((t) => t.source.equals('altar'))
-          ..where((t) => t.version.equals(RewardSeeder.currentVersion)))
-        .get();
-
-    debugPrint('ALTAR rows v${RewardSeeder.currentVersion}: '
-        '${altarRows.map((e) => '${e.id}:${e.rarity}').toList()}');
-
     overlays.add(Overlays.heroSelect);
   }
 
@@ -228,6 +224,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     // билд сбрасываем на новый ран
     buildState.stacks.clear();
     runModifiers.reset();
+    abilitySlots.value = List<String?>.filled(4, null);
 
     scoreSystem.reset();
     threatSystem.reset();
@@ -375,6 +372,8 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
       playerHp.value = 0;
       playerMaxHp.value = 1;
       playerArmor.value = 0;
+      playerMana.value = 0;
+      playerMaxMana.value = 1;
 
       return;
     }
@@ -382,6 +381,40 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     playerHp.value = p.hp;
     playerMaxHp.value = p.maxHp;
     playerArmor.value = p.stats.armor;
+    playerMana.value = p.stats.mana;
+    playerMaxMana.value = p.stats.maxMana;
+  }
+
+  /// Регистрирует активную способность в слоте (первый свободный).
+  /// Если уже есть — не меняем.
+  void assignAbilitySlot(String abilityId) {
+    final list = List<String?>.from(abilitySlots.value);
+    if (list.contains(abilityId)) return;
+
+    final idx = list.indexOf(null);
+    if (idx == -1) return;
+
+    list[idx] = abilityId;
+    abilitySlots.value = list;
+  }
+
+  /// Пытается активировать способность из слота.
+  bool tryActivateAbilitySlot(int slotIndex) {
+    final p = player;
+    if (p == null) return false;
+
+    final slots = abilitySlots.value;
+    if (slotIndex < 0 || slotIndex >= slots.length) return false;
+
+    final id = slots[slotIndex];
+    if (id == null) return false;
+
+    final ability = p.buffs.getBuffAs<ActiveAbility>(id);
+    if (ability == null) return false;
+
+    final ok = ability.tryActivate(p);
+    if (ok) notifyPlayerStatsChanged();
+    return ok;
   }
 
   void notifyPlayerStatsChanged() => _syncPlayerStatsToHud();
@@ -400,35 +433,6 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
   void _onBiomeTimeOver() {
     enemySpawner.isPaused = true;
     overlays.add(Overlays.heroSelect);
-  }
-
-  void _scheduleThreatCards() {
-    add(
-      TimerComponent(
-        period: GameConstants.threatCardPeriodSeconds,
-        repeat: true,
-        onTick: () {
-          final p = player;
-          if (p == null || p.isRemoving) return;
-
-          final dx = rng.nextDouble() * 600 - 300;
-          final dy = rng.nextDouble() * 600 - 300;
-
-          final rawPos = Vector2(p.position.x + dx, p.position.y + dy);
-          final pos = worldMap.clampToMap(rawPos);
-
-          worldMap.add(
-            ThreatCard(
-              position: pos,
-              onPicked: () {
-                threatSystem.increaseThreat();
-                scoreSystem.addScore(3);
-              },
-            ),
-          );
-        },
-      ),
-    );
   }
 
   EnemyComponent? findNearestEnemyInRadius(

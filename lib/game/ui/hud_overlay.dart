@@ -28,6 +28,7 @@ class HudOverlay extends StatelessWidget {
               style: const TextStyle(color: Colors.white, fontSize: 14),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   ValueListenableBuilder<int>(
                     valueListenable: game.playerHp,
@@ -38,7 +39,7 @@ class HudOverlay extends StatelessWidget {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('❤️ HP: $hp/$maxHp'),
+                          Text('HP: $hp/$maxHp'),
                           const SizedBox(height: 4),
                           SizedBox(
                             width: 180,
@@ -50,9 +51,39 @@ class HudOverlay extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 6),
+                          ValueListenableBuilder<double>(
+                            valueListenable: game.playerMana,
+                            builder: (_, mana, __) {
+                              final maxMana = game.playerMaxMana.value;
+                              final mRatio =
+                                  (maxMana <= 0) ? 0.0 : (mana / maxMana).clamp(0.0, 1.0);
+
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${l10n.t("hud_mana")}: ${mana.toStringAsFixed(0)}/${maxMana.toStringAsFixed(0)}',
+                                  ),
+                                  const SizedBox(height: 4),
+                                  SizedBox(
+                                    width: 180,
+                                    child: LinearProgressIndicator(
+                                      value: mRatio,
+                                      backgroundColor: Colors.white12,
+                                      valueColor: const AlwaysStoppedAnimation<Color>(
+                                        Colors.lightBlueAccent,
+                                      ),
+                                      minHeight: 6,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 6),
                           ValueListenableBuilder<int>(
                             valueListenable: game.playerArmor,
-                            builder: (_, armor, __) => Text('🛡 ${l10n.t("hud_armor")}: $armor'),
+                            builder: (_, armor, __) => Text('${l10n.t("hud_armor")}: $armor'),
                           ),
                           const SizedBox(height: 10),
                         ],
@@ -61,28 +92,27 @@ class HudOverlay extends StatelessWidget {
                   ),
                   ValueListenableBuilder<double>(
                     valueListenable: game.timeLeft,
-                    builder: (_, v, __) =>
-                        Text('⏳ ${l10n.t('hud_timer')}: ${v.toStringAsFixed(0)}'),
+                    builder: (_, v, __) => Text('${l10n.t('hud_timer')}: ${v.toStringAsFixed(0)}'),
                   ),
                   ValueListenableBuilder<int>(
                     valueListenable: game.score,
-                    builder: (_, v, __) => Text('⭐ ${l10n.t('hud_score')}: $v'),
+                    builder: (_, v, __) => Text('${l10n.t('hud_score')}: $v'),
                   ),
                   ValueListenableBuilder<int>(
                     valueListenable: game.threatLevel,
                     builder: (_, v, __) => Text(
-                      '☠ ${l10n.t('hud_threat')}: $v ${l10n.t('hud_threat_multiplier')}',
+                      '${l10n.t('hud_threat')}: $v ${l10n.t('hud_threat_multiplier')}',
                     ),
                   ),
                   ValueListenableBuilder<int>(
                     valueListenable: game.keysFound,
                     builder: (_, v, __) =>
-                        Text('🔑 ${l10n.t('hud_keys')}: $v/3 ${l10n.t('hud_keys_todo')}'),
+                        Text('${l10n.t('hud_keys')}: $v/3 ${l10n.t('hud_keys_todo')}'),
                   ),
                   const SizedBox(height: 8),
                   ValueListenableBuilder<int>(
                     valueListenable: game.level,
-                    builder: (_, v, __) => Text('🧠 Lv: $v'),
+                    builder: (_, v, __) => Text('Lv: $v'),
                   ),
                   ValueListenableBuilder<double>(
                     valueListenable: game.xpProgress,

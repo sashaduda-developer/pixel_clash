@@ -17,6 +17,9 @@ class MeleeSwing extends PositionComponent with CollisionCallbacks {
     required this.damage,
     required this.isCrit,
     required this.owner,
+    this.color = const Color(0xFF90CAF9),
+    this.maxAlpha = 0.32,
+    this.drawOutline = true,
     this.lifeSeconds = 0.12,
   });
 
@@ -28,6 +31,15 @@ class MeleeSwing extends PositionComponent with CollisionCallbacks {
 
   final PlayerComponent owner;
 
+  /// Базовый цвет удара.
+  final Color color;
+
+  /// Максимальная прозрачность заливки.
+  final double maxAlpha;
+
+  /// Рисовать ли контур для читаемости.
+  final bool drawOutline;
+
   /// Время жизни эффекта удара (сек).
   final double lifeSeconds;
 
@@ -37,7 +49,7 @@ class MeleeSwing extends PositionComponent with CollisionCallbacks {
 
   double _life = 0;
 
-  final Paint _basePaint = Paint()..color = const Color(0xFF90CAF9);
+  late final Paint _basePaint = Paint()..color = color;
 
   @override
   Future<void> onLoad() async {
@@ -67,13 +79,25 @@ class MeleeSwing extends PositionComponent with CollisionCallbacks {
 
     // Плавное затухание (alpha уменьшается со временем)
     final t = (1 - (_life / lifeSeconds)).clamp(0.0, 1.0);
-    final paint = Paint()..color = _basePaint.color.withValues(alpha: 0.25 * t);
+    final paint = Paint()..color = _basePaint.color.withValues(alpha: maxAlpha * t);
 
     canvas.drawCircle(
       Offset(size.x / 2, size.y / 2),
       radius,
       paint,
     );
+
+    if (drawOutline) {
+      final outline = Paint()
+        ..color = _basePaint.color.withValues(alpha: (maxAlpha * 0.85) * t)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2;
+      canvas.drawCircle(
+        Offset(size.x / 2, size.y / 2),
+        radius,
+        outline,
+      );
+    }
   }
 
   @override
@@ -88,7 +112,12 @@ class MeleeSwing extends PositionComponent with CollisionCallbacks {
     // Для мили мы обычно хотим ударить и исчезнуть (как у тебя сейчас).
     // Если в будущем надо бить нескольких — уберём removeFromParent().
     if (other is EnemyComponent) {
-      other.takeDamageFromHit(damage, isCrit: isCrit);
+      other.takeDamageFromHit(
+        damage,
+        isCrit: isCrit,
+        attacker: owner,
+        sourceType: DamageSourceType.melee,
+      );
       owner.buffs.emit(
         DamageDealtEvent(
           attacker: owner,

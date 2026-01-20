@@ -13,6 +13,21 @@ class BuffSystem {
 
   List<Buff> get buffs => List<Buff>.unmodifiable(_buffs);
 
+  /// Возвращает бафф по id, если есть.
+  Buff? getBuff(String id) {
+    for (final b in _buffs) {
+      if (b.id == id) return b;
+    }
+    return null;
+  }
+
+  /// Возвращает бафф конкретного типа, если он совпадает.
+  T? getBuffAs<T extends Buff>(String id) {
+    final b = getBuff(id);
+    if (b is T) return b;
+    return null;
+  }
+
   /// Добавить баф.
   ///
   /// Если баф уже есть:
@@ -42,6 +57,13 @@ class BuffSystem {
     final snapshot = List<Buff>.from(_buffs);
     for (final b in snapshot) {
       b.onEvent(owner, event);
+    }
+  }
+  /// Апдейт баффов по времени (ауры/кулдауны/активки).
+  void update(double dt) {
+    final snapshot = List<Buff>.from(_buffs);
+    for (final b in snapshot) {
+      b.onUpdate(owner, dt);
     }
   }
 }

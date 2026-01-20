@@ -13,6 +13,7 @@ class DamageNumberComponent extends PositionComponent {
     required super.position,
     required this.value,
     required this.color,
+    this.label,
     this.lifeSeconds = 0.7,
     this.riseSpeed = 32,
     this.scaleFactor = 1.0,
@@ -24,6 +25,9 @@ class DamageNumberComponent extends PositionComponent {
   /// Цвет текста.
   final Color color;
 
+  /// Текст вместо числа (например, "MISS").
+  final String? label;
+
   /// Сколько живёт (сек).
   final double lifeSeconds;
 
@@ -33,6 +37,7 @@ class DamageNumberComponent extends PositionComponent {
   final double scaleFactor;
 
   late final TextComponent _text;
+  late final String _displayText;
 
   double _life = 0;
 
@@ -44,9 +49,10 @@ class DamageNumberComponent extends PositionComponent {
     await super.onLoad();
 
     anchor = Anchor.center;
+    _displayText = label ?? value.toString();
 
     _text = TextComponent(
-      text: value.toString(),
+      text: _displayText,
       anchor: Anchor.center,
       textRenderer: TextPaint(
         style: TextStyle(

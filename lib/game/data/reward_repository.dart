@@ -211,14 +211,17 @@ class RewardRepository {
     final delta = params['delta'];
     if (delta is num) {
       final stat = params['stat'];
-      if (stat == 'critChance') {
+      if (stat == 'critChance' || stat == 'evasion') {
         final pct = (delta.toDouble() * 100).round();
         return l10n.tParams(descKey, {'value': '$pct'});
       }
       if (stat == 'attackSpeed') {
         return l10n.tParams(descKey, {'value': delta.toStringAsFixed(2)});
       }
-      return l10n.tParams(descKey, {'value': '${delta.round()}'});
+      if (stat == 'manaRegen') {
+        return l10n.tParams(descKey, {'value': delta.toStringAsFixed(1)});
+      }
+      return l10n.tParams(descKey, {'value': '${delta.round()}'}); 
     }
 
     final ls = params['lifesteal'];
