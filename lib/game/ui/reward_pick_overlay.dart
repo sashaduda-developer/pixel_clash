@@ -39,6 +39,11 @@ class RewardPickOverlay extends StatelessWidget {
                           onPick: () {
                             game.applyRewardAndResume(r);
                           },
+                          onSkip: r.source == RewardSource.chest
+                              ? () {
+                                  game.skipRewardAndResume();
+                                }
+                              : null,
                         )),
                     const SizedBox(height: 10),
                     TextButton(
@@ -65,10 +70,12 @@ class _RewardCard extends StatelessWidget {
   const _RewardCard({
     required this.reward,
     required this.onPick,
+    this.onSkip,
   });
 
   final RewardDefinition reward;
   final VoidCallback onPick;
+  final VoidCallback? onSkip;
 
   @override
   Widget build(BuildContext context) {
@@ -95,66 +102,109 @@ class _RewardCard extends StatelessWidget {
               ),
             ],
           ),
-          child: Row(
+          child: Stack(
             children: [
-              Container(
-                width: 54,
-                height: 54,
-                decoration: BoxDecoration(
-                  color: borderColor.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(
-                  reward.icon,
-                  color: borderColor,
-                  size: 30,
-                ),
+              Row(
+                children: [
+                  Container(
+                    width: 54,
+                    height: 54,
+                    decoration: BoxDecoration(
+                      color: borderColor.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      reward.icon,
+                      color: borderColor,
+                      size: 30,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          spacing: 8,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Text(
+                              reward.title,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                height: 1,
+                              ),
+                            ),
+                            _RarityChip(rarity: reward.rarity),
+                            if (reward.kind == RewardKind.ability || reward.kind == RewardKind.buff)
+                              _KindChip(kind: reward.kind),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          reward.description,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.85),
+                            fontSize: 13,
+                            height: 1.2,
+                          ),
+                        ),
+                        if (reward.stats != null && reward.stats!.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          _StatChips(values: reward.stats!, color: borderColor),
+                        ],
+                        if (onSkip != null) ...[
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: onSkip,
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.white70,
+                                    side: BorderSide(color: borderColor.withValues(alpha: 0.4)),
+                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                  ),
+                                  child: const Text('Уйти'),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: onPick,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: borderColor.withValues(alpha: 0.22),
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      side: BorderSide(color: borderColor.withValues(alpha: 0.5)),
+                                    ),
+                                  ),
+                                  child: const Text('Взять'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      reward.title,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      reward.description,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.85),
-                        fontSize: 13,
-                        height: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: _RarityChip(rarity: reward.rarity),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton(
-                onPressed: onPick,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: borderColor.withValues(alpha: 0.22),
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: borderColor.withValues(alpha: 0.5)),
+              if (reward.maxLevel != null)
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: _LevelText(
+                    current: reward.currentLevel ?? 0,
+                    max: reward.maxLevel ?? 1,
+                    color: borderColor,
                   ),
                 ),
-                child: const Text('Взять'),
-              ),
             ],
           ),
         ),
@@ -187,7 +237,7 @@ class _RarityChip extends StatelessWidget {
     };
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.18),
         borderRadius: BorderRadius.circular(999),
@@ -198,6 +248,117 @@ class _RarityChip extends StatelessWidget {
         style: TextStyle(
           color: Colors.white.withValues(alpha: 0.9),
           fontSize: 12,
+          fontWeight: FontWeight.w700,
+          height: 1,
+        ),
+      ),
+    );
+  }
+}
+
+class _KindChip extends StatelessWidget {
+  const _KindChip({required this.kind});
+
+  final RewardKind kind;
+
+  @override
+  Widget build(BuildContext context) {
+    final (text, color) = switch (kind) {
+      RewardKind.ability => ('Активная', const Color(0xFF4FC3F7)),
+      RewardKind.buff => ('Пассивная', const Color(0xFF81C784)),
+      _ => ('', const Color(0xFFB0BEC5)),
+    };
+
+    if (text.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: color.withValues(alpha: 0.5)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.9),
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.3,
+        ),
+      ),
+    );
+  }
+}
+
+class _StatChips extends StatelessWidget {
+  const _StatChips({required this.values, required this.color});
+
+  final List<RewardStat> values;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    // Строки характеристик показываем отдельными чипами.
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: values.map((stat) {
+        final chipColor = _chipColor(stat);
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: chipColor.withValues(alpha: 0.16),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(color: chipColor.withValues(alpha: 0.5)),
+          ),
+          child: Text(
+            '${stat.label} ${stat.value}',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.9),
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Color _chipColor(RewardStat stat) {
+    return switch (stat.polarity) {
+      RewardStatPolarity.positive => const Color(0xFF81C784),
+      RewardStatPolarity.negative => const Color(0xFFE57373),
+      RewardStatPolarity.neutral => color,
+    };
+  }
+}
+
+class _LevelText extends StatelessWidget {
+  const _LevelText({
+    required this.current,
+    required this.max,
+    required this.color,
+  });
+
+  final int current;
+  final int max;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.45)),
+      ),
+      child: Text(
+        '$current/$max',
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.9),
+          fontSize: 11,
           fontWeight: FontWeight.w700,
         ),
       ),

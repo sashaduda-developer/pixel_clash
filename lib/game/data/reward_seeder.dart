@@ -144,49 +144,78 @@ class RewardSeeder {
       // ===========================
       // CHEST — предметы
       // ===========================
-      _row(
+      ..._itemVariants(
         source: 'chest',
         id: 'item_book_hardship',
-        kind: 'item',
-        rarity: 'common',
-        weight: 1,
         titleKey: 'chest_book_hardship_title',
         descKey: 'chest_book_hardship_desc',
         iconKey: 'book',
-        params: {'spawnRateAdd': 0.25},
+        paramKey: 'spawnRateAdd',
+        common: 0.25,
+        rare: 0.40,
+        epic: 0.60,
+        legendary: 0.85,
       ),
-      _row(
+      ..._itemVariantsMap(
         source: 'chest',
-        id: 'item_book_hardship',
-        kind: 'item',
-        rarity: 'rare',
-        weight: 1,
-        titleKey: 'chest_book_hardship_title',
-        descKey: 'chest_book_hardship_desc',
+        id: 'item_book_chaos',
+        titleKey: 'chest_book_chaos_title',
+        descKey: 'chest_book_chaos_desc',
         iconKey: 'book',
-        params: {'spawnRateAdd': 0.40},
+        common: {
+          'spawnRateAdd': 0.20,
+          'eliteChanceAdd': 0.06,
+          'eliteHpMult': 1.35,
+          'eliteDmgMult': 1.20,
+          'eliteScoreMult': 1.30,
+          'eliteXpMult': 1.20,
+        },
+        rare: {
+          'spawnRateAdd': 0.30,
+          'eliteChanceAdd': 0.09,
+          'eliteHpMult': 1.45,
+          'eliteDmgMult': 1.30,
+          'eliteScoreMult': 1.50,
+          'eliteXpMult': 1.35,
+        },
+        epic: {
+          'spawnRateAdd': 0.40,
+          'eliteChanceAdd': 0.12,
+          'eliteHpMult': 1.60,
+          'eliteDmgMult': 1.45,
+          'eliteScoreMult': 1.70,
+          'eliteXpMult': 1.50,
+        },
+        legendary: {
+          'spawnRateAdd': 0.55,
+          'eliteChanceAdd': 0.16,
+          'eliteHpMult': 1.80,
+          'eliteDmgMult': 1.60,
+          'eliteScoreMult': 2.00,
+          'eliteXpMult': 1.70,
+        },
       ),
-      _row(
+      ..._itemVariantsMap(
         source: 'chest',
-        id: 'item_book_hardship',
-        kind: 'item',
-        rarity: 'epic',
-        weight: 1,
-        titleKey: 'chest_book_hardship_title',
-        descKey: 'chest_book_hardship_desc',
+        id: 'item_book_luck',
+        titleKey: 'chest_book_luck_title',
+        descKey: 'chest_book_luck_desc',
         iconKey: 'book',
-        params: {'spawnRateAdd': 0.60},
+        common: {'luckBonusAdd': 0.10, 'maxHpDelta': -6},
+        rare: {'luckBonusAdd': 0.18, 'maxHpDelta': -10},
+        epic: {'luckBonusAdd': 0.26, 'maxHpDelta': -14},
+        legendary: {'luckBonusAdd': 0.35, 'maxHpDelta': -20},
       ),
-      _row(
+      ..._itemVariantsMap(
         source: 'chest',
-        id: 'item_book_hardship',
-        kind: 'item',
-        rarity: 'legendary',
-        weight: 1,
-        titleKey: 'chest_book_hardship_title',
-        descKey: 'chest_book_hardship_desc',
+        id: 'item_book_knowledge',
+        titleKey: 'chest_book_knowledge_title',
+        descKey: 'chest_book_knowledge_desc',
         iconKey: 'book',
-        params: {'spawnRateAdd': 0.85},
+        common: {'xpGainMult': 0.20, 'damageDelta': -1},
+        rare: {'xpGainMult': 0.35, 'damageDelta': -2},
+        epic: {'xpGainMult': 0.50, 'damageDelta': -3},
+        legendary: {'xpGainMult': 0.70, 'damageDelta': -5},
       ),
 
       // ===========================
@@ -203,7 +232,7 @@ class RewardSeeder {
         titleKey: 'altar_freeze_aura_title',
         descKey: 'altar_freeze_aura_desc',
         iconKey: 'snow',
-        maxLevel: 2,
+        maxLevel: 4,
         trigger: {
           'kind': 'timer',
           'event': null,
@@ -219,6 +248,14 @@ class RewardSeeder {
             'level': 2,
             'values': {'radius': 2.1, 'intervalSec': 5.0, 'freezeSec': 1.1},
           },
+          {
+            'level': 3,
+            'values': {'radius': 2.4, 'intervalSec': 4.6, 'freezeSec': 1.3},
+          },
+          {
+            'level': 4,
+            'values': {'radius': 2.7, 'intervalSec': 4.2, 'freezeSec': 1.5},
+          },
         ],
       ),
       _altarSkillRow(
@@ -228,7 +265,7 @@ class RewardSeeder {
         titleKey: 'altar_ignite_title',
         descKey: 'altar_ignite_desc',
         iconKey: 'bolt',
-        maxLevel: 2,
+        maxLevel: 4,
         trigger: {
           'kind': 'onHit',
           'event': 'DamageDealtEvent',
@@ -244,6 +281,14 @@ class RewardSeeder {
             'level': 2,
             'values': {'procChance': 0.32, 'durationSec': 3.0, 'totalDamagePct': 0.25},
           },
+          {
+            'level': 3,
+            'values': {'procChance': 0.40, 'durationSec': 3.4, 'totalDamagePct': 0.32},
+          },
+          {
+            'level': 4,
+            'values': {'procChance': 0.48, 'durationSec': 3.8, 'totalDamagePct': 0.40},
+          },
         ],
       ),
       _altarSkillRow(
@@ -253,7 +298,7 @@ class RewardSeeder {
         titleKey: 'altar_slow_strikes_title',
         descKey: 'altar_slow_strikes_desc',
         iconKey: 'snow',
-        maxLevel: 2,
+        maxLevel: 4,
         trigger: {
           'kind': 'onHit',
           'event': 'DamageDealtEvent',
@@ -269,6 +314,14 @@ class RewardSeeder {
             'level': 2,
             'values': {'slowPct': 0.28, 'durationSec': 0.9},
           },
+          {
+            'level': 3,
+            'values': {'slowPct': 0.34, 'durationSec': 1.1},
+          },
+          {
+            'level': 4,
+            'values': {'slowPct': 0.40, 'durationSec': 1.3},
+          },
         ],
       ),
       _altarSkillRow(
@@ -278,7 +331,7 @@ class RewardSeeder {
         titleKey: 'altar_thorns_title',
         descKey: 'altar_thorns_desc_v2',
         iconKey: 'shield',
-        maxLevel: 2,
+        maxLevel: 4,
         trigger: {
           'kind': 'onPlayerDamaged',
           'event': null,
@@ -293,6 +346,14 @@ class RewardSeeder {
           {
             'level': 2,
             'values': {'reflectPct': 0.20},
+          },
+          {
+            'level': 3,
+            'values': {'reflectPct': 0.28},
+          },
+          {
+            'level': 4,
+            'values': {'reflectPct': 0.38},
           },
         ],
       ),
@@ -515,11 +576,23 @@ class RewardSeeder {
         levels: [
           {
             'level': 1,
-            'values': {'cooldownSec': 14.0, 'radius': 2.6, 'freezeSec': 1.0, 'damagePctBase': 0.60}
+            'values': {
+              'cooldownSec': 14.0,
+              'manaCost': 28.0,
+              'radius': 2.6,
+              'freezeSec': 1.0,
+              'damagePctBase': 0.60
+            }
           },
           {
             'level': 2,
-            'values': {'cooldownSec': 12.0, 'radius': 3.0, 'freezeSec': 1.3, 'damagePctBase': 0.75}
+            'values': {
+              'cooldownSec': 12.0,
+              'manaCost': 28.0,
+              'radius': 3.0,
+              'freezeSec': 1.3,
+              'damagePctBase': 0.75
+            }
           },
         ],
       ),
@@ -542,11 +615,23 @@ class RewardSeeder {
         levels: [
           {
             'level': 1,
-            'values': {'cooldownSec': 18.0, 'radius': 3.2, 'stunSec': 1.2, 'damagePctBase': 0.90}
+            'values': {
+              'cooldownSec': 18.0,
+              'manaCost': 32.0,
+              'radius': 3.2,
+              'stunSec': 1.2,
+              'damagePctBase': 0.90
+            }
           },
           {
             'level': 2,
-            'values': {'cooldownSec': 16.0, 'radius': 3.6, 'stunSec': 1.6, 'damagePctBase': 1.10}
+            'values': {
+              'cooldownSec': 16.0,
+              'manaCost': 32.0,
+              'radius': 3.6,
+              'stunSec': 1.6,
+              'damagePctBase': 1.10
+            }
           },
         ],
       ),
@@ -592,11 +677,23 @@ class RewardSeeder {
         levels: [
           {
             'level': 1,
-            'values': {'cooldownSec': 24.0, 'radius': 5.0, 'slowPct': 0.45, 'durationSec': 2.0}
+            'values': {
+              'cooldownSec': 24.0,
+              'manaCost': 26.0,
+              'radius': 5.0,
+              'slowPct': 0.45,
+              'durationSec': 2.0
+            }
           },
           {
             'level': 2,
-            'values': {'cooldownSec': 21.0, 'radius': 5.0, 'slowPct': 0.55, 'durationSec': 2.4}
+            'values': {
+              'cooldownSec': 21.0,
+              'manaCost': 26.0,
+              'radius': 5.0,
+              'slowPct': 0.55,
+              'durationSec': 2.4
+            }
           },
         ],
       ),
@@ -635,7 +732,7 @@ class RewardSeeder {
         titleKey: 'altar_vamp_title',
         descKey: 'altar_vamp_desc',
         iconKey: 'bolt',
-        maxLevel: 2,
+        maxLevel: 4,
         trigger: {
           'kind': 'onHit',
           'event': 'DamageDealtEvent',
@@ -653,7 +750,63 @@ class RewardSeeder {
             'level': 2,
             'values': {'lifesteal': 0.05}
           },
+          {
+            'level': 3,
+            'values': {'lifesteal': 0.07}
+          },
+          {
+            'level': 4,
+            'values': {'lifesteal': 0.10}
+          },
         ],
+      ),
+
+      // ===========================
+      // BOSS — уникальные эффекты
+      // ===========================
+      _row(
+        source: 'boss',
+        id: 'boss_phoenix_heart',
+        kind: 'buff',
+        rarity: 'legendary',
+        weight: 1,
+        titleKey: 'boss_phoenix_heart_title',
+        descKey: 'boss_phoenix_heart_desc',
+        iconKey: 'bolt',
+        params: const {},
+      ),
+      _row(
+        source: 'boss',
+        id: 'boss_time_crystal',
+        kind: 'buff',
+        rarity: 'legendary',
+        weight: 1,
+        titleKey: 'boss_time_crystal_title',
+        descKey: 'boss_time_crystal_desc',
+        iconKey: 'bolt',
+        params: const {},
+      ),
+      _row(
+        source: 'boss',
+        id: 'boss_titan_shield',
+        kind: 'buff',
+        rarity: 'legendary',
+        weight: 1,
+        titleKey: 'boss_titan_shield_title',
+        descKey: 'boss_titan_shield_desc',
+        iconKey: 'shield',
+        params: const {},
+      ),
+      _row(
+        source: 'boss',
+        id: 'boss_storm_heart',
+        kind: 'buff',
+        rarity: 'legendary',
+        weight: 1,
+        titleKey: 'boss_storm_heart_title',
+        descKey: 'boss_storm_heart_desc',
+        iconKey: 'bolt',
+        params: const {},
       ),
     ];
 
@@ -718,6 +871,128 @@ class RewardSeeder {
         descKey: descKey,
         iconKey: iconKey,
         params: {'stat': stat, 'delta': legendary},
+      ),
+    ];
+  }
+
+  /// Варианты предмета по редкости.
+  static List<RewardDefinitionsCompanion> _itemVariants({
+    required String source,
+    required String id,
+    required String titleKey,
+    required String descKey,
+    required String iconKey,
+    required String paramKey,
+    required Object common,
+    required Object rare,
+    required Object epic,
+    required Object legendary,
+    double weight = 1,
+  }) {
+    return [
+      _row(
+        source: source,
+        id: id,
+        kind: 'item',
+        rarity: 'common',
+        weight: weight,
+        titleKey: titleKey,
+        descKey: descKey,
+        iconKey: iconKey,
+        params: {paramKey: common},
+      ),
+      _row(
+        source: source,
+        id: id,
+        kind: 'item',
+        rarity: 'rare',
+        weight: weight,
+        titleKey: titleKey,
+        descKey: descKey,
+        iconKey: iconKey,
+        params: {paramKey: rare},
+      ),
+      _row(
+        source: source,
+        id: id,
+        kind: 'item',
+        rarity: 'epic',
+        weight: weight,
+        titleKey: titleKey,
+        descKey: descKey,
+        iconKey: iconKey,
+        params: {paramKey: epic},
+      ),
+      _row(
+        source: source,
+        id: id,
+        kind: 'item',
+        rarity: 'legendary',
+        weight: weight,
+        titleKey: titleKey,
+        descKey: descKey,
+        iconKey: iconKey,
+        params: {paramKey: legendary},
+      ),
+    ];
+  }
+
+  static List<RewardDefinitionsCompanion> _itemVariantsMap({
+    required String source,
+    required String id,
+    required String titleKey,
+    required String descKey,
+    required String iconKey,
+    required Map<String, Object?> common,
+    required Map<String, Object?> rare,
+    required Map<String, Object?> epic,
+    required Map<String, Object?> legendary,
+    double weight = 1,
+  }) {
+    return [
+      _row(
+        source: source,
+        id: id,
+        kind: 'item',
+        rarity: 'common',
+        weight: weight,
+        titleKey: titleKey,
+        descKey: descKey,
+        iconKey: iconKey,
+        params: common,
+      ),
+      _row(
+        source: source,
+        id: id,
+        kind: 'item',
+        rarity: 'rare',
+        weight: weight,
+        titleKey: titleKey,
+        descKey: descKey,
+        iconKey: iconKey,
+        params: rare,
+      ),
+      _row(
+        source: source,
+        id: id,
+        kind: 'item',
+        rarity: 'epic',
+        weight: weight,
+        titleKey: titleKey,
+        descKey: descKey,
+        iconKey: iconKey,
+        params: epic,
+      ),
+      _row(
+        source: source,
+        id: id,
+        kind: 'item',
+        rarity: 'legendary',
+        weight: weight,
+        titleKey: titleKey,
+        descKey: descKey,
+        iconKey: iconKey,
+        params: legendary,
       ),
     ];
   }

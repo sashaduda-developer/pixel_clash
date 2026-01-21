@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'package:pixel_clash/game/pixel_clash_game.dart';
 import 'package:pixel_clash/game/ui/abilities_overlay.dart';
+import 'package:pixel_clash/game/ui/boss_reward_overlay.dart';
 import 'package:pixel_clash/game/ui/hero_select_overlay.dart';
 import 'package:pixel_clash/game/ui/hud_overlay.dart';
 import 'package:pixel_clash/game/ui/overlays.dart';
@@ -32,6 +33,7 @@ class PixelClashApp extends StatelessWidget {
             Overlays.hud: (_, g) => HudOverlay(game: g),
             Overlays.abilities: (_, g) => AbilitiesOverlay(game: g),
             Overlays.rewardPick: (_, g) => RewardPickOverlay(game: g),
+            Overlays.bossReward: (_, g) => BossRewardOverlay(game: g),
           },
         ),
       ),

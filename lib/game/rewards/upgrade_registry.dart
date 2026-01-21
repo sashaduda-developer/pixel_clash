@@ -3,6 +3,10 @@ import 'dart:math';
 
 import 'package:pixel_clash/game/components/combat/buffs/altar_buffs.dart';
 import 'package:pixel_clash/game/components/combat/buffs/chain_lightning_buff.dart';
+import 'package:pixel_clash/game/components/combat/buffs/boss/phoenix_heart_buff.dart';
+import 'package:pixel_clash/game/components/combat/buffs/boss/storm_heart_buff.dart';
+import 'package:pixel_clash/game/components/combat/buffs/boss/time_crystal_buff.dart';
+import 'package:pixel_clash/game/components/combat/buffs/boss/titan_shield_buff.dart';
 import 'package:pixel_clash/game/components/combat/buffs/vampirism_buff.dart';
 import 'package:pixel_clash/game/components/combat/rarity.dart';
 import 'package:pixel_clash/game/pixel_clash_game.dart';
@@ -50,6 +54,14 @@ class UpgradeRegistry {
 
       // ===== items =====
       'item_book_hardship': _applyBookHardship,
+      'item_book_chaos': _applyBookChaos,
+      'item_book_luck': _applyBookLuck,
+      'item_book_knowledge': _applyBookKnowledge,
+      // ===== boss unique =====
+      'boss_phoenix_heart': _applyPhoenixHeart,
+      'boss_time_crystal': _applyTimeCrystal,
+      'boss_titan_shield': _applyTitanShield,
+      'boss_storm_heart': _applyStormHeart,
 
     };
   }
@@ -472,5 +484,109 @@ class UpgradeRegistry {
     // Суммируем прибавку (аддитивно).
     // Например common +25% и rare +40% => итого +65% частоты спавна.
     game.runModifiers.enemySpawnRateAdd += add.toDouble();
+  }
+
+  void _applyBookChaos(
+    PixelClashGame game,
+    Map<String, Object?> params,
+    PlayerBuildState build,
+    Rarity rarity,
+  ) {
+    final spawn = params['spawnRateAdd'];
+    final eliteChance = params['eliteChanceAdd'];
+    final eliteHp = params['eliteHpMult'];
+    final eliteDmg = params['eliteDmgMult'];
+    final eliteScore = params['eliteScoreMult'];
+    final eliteXp = params['eliteXpMult'];
+
+    if (spawn is num) game.runModifiers.enemySpawnRateAdd += spawn.toDouble();
+    if (eliteChance is num) game.runModifiers.eliteChanceAdd += eliteChance.toDouble();
+    if (eliteHp is num) game.runModifiers.eliteHpMultiplier *= eliteHp.toDouble();
+    if (eliteDmg is num) game.runModifiers.eliteDmgMultiplier *= eliteDmg.toDouble();
+    if (eliteScore is num) game.runModifiers.eliteScoreMultiplier *= eliteScore.toDouble();
+    if (eliteXp is num) game.runModifiers.eliteXpMultiplier *= eliteXp.toDouble();
+  }
+
+  void _applyBookLuck(
+    PixelClashGame game,
+    Map<String, Object?> params,
+    PlayerBuildState build,
+    Rarity rarity,
+  ) {
+    final luck = params['luckBonusAdd'];
+    final hpDelta = params['maxHpDelta'];
+
+    if (luck is num) game.runModifiers.luckBonusAdd += luck.toDouble();
+
+    final p = game.player;
+    if (p == null) return;
+    if (hpDelta is num) {
+      p.stats.maxHp += hpDelta.round();
+      if (p.stats.maxHp < 1) p.stats.maxHp = 1;
+      if (p.stats.hp > p.stats.maxHp) p.stats.hp = p.stats.maxHp;
+      game.notifyPlayerStatsChanged();
+    }
+  }
+
+  void _applyBookKnowledge(
+    PixelClashGame game,
+    Map<String, Object?> params,
+    PlayerBuildState build,
+    Rarity rarity,
+  ) {
+    final xp = params['xpGainMult'];
+    final dmgDelta = params['damageDelta'];
+
+    if (xp is num) game.runModifiers.xpGainAdd += xp.toDouble();
+
+    final p = game.player;
+    if (p == null) return;
+    if (dmgDelta is num) {
+      p.stats.damage = max(1, p.stats.damage + dmgDelta.round());
+    }
+  }
+
+  void _applyPhoenixHeart(
+    PixelClashGame game,
+    Map<String, Object?> params,
+    PlayerBuildState build,
+    Rarity rarity,
+  ) {
+    final p = game.player;
+    if (p == null) return;
+    p.buffs.addBuff(PhoenixHeartBuff());
+  }
+
+  void _applyTimeCrystal(
+    PixelClashGame game,
+    Map<String, Object?> params,
+    PlayerBuildState build,
+    Rarity rarity,
+  ) {
+    final p = game.player;
+    if (p == null) return;
+    p.buffs.addBuff(TimeCrystalBuff());
+  }
+
+  void _applyTitanShield(
+    PixelClashGame game,
+    Map<String, Object?> params,
+    PlayerBuildState build,
+    Rarity rarity,
+  ) {
+    final p = game.player;
+    if (p == null) return;
+    p.buffs.addBuff(TitanShieldBuff());
+  }
+
+  void _applyStormHeart(
+    PixelClashGame game,
+    Map<String, Object?> params,
+    PlayerBuildState build,
+    Rarity rarity,
+  ) {
+    final p = game.player;
+    if (p == null) return;
+    p.buffs.addBuff(StormHeartBuff());
   }
 }

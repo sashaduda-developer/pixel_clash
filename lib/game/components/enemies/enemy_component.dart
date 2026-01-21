@@ -34,6 +34,11 @@ class EnemyComponent extends PositionComponent
   int _hp;
   final int _maxHp;
 
+  int get hp => _hp;
+  int get maxHp => _maxHp;
+  bool get isBoss => false;
+  String get bossName => 'Boss';
+
   bool _isDead = false;
 
   @override
@@ -59,14 +64,19 @@ class EnemyComponent extends PositionComponent
 
   final List<_DotEffect> _dots = <_DotEffect>[];
 
-  final Color _baseColor = const Color(0xFFE57373);
-  final Color _flashColor = const Color(0xFFFFCDD2);
+  Color get baseColor => const Color(0xFFE57373);
+  Color get flashColor => const Color(0xFFFFCDD2);
+  Color get hpFillColor => const Color(0xFFE53935);
+  double get bodySize => 28;
+  double get hitboxRadius => 12;
+  double get hpBarHeight => 4.0;
+  bool get drawEliteBorder => false;
+  Color get eliteBorderColor => const Color(0x66FFFFFF);
 
   double _flashTimer = 0;
   static const double _flashDuration = 0.08;
 
   final Paint _hpBg = Paint()..color = const Color(0x66000000);
-  final Paint _hpFg = Paint()..color = const Color(0xFFE53935);
   final Paint _hpBorder = Paint()
     ..color = const Color(0x66FFFFFF)
     ..style = PaintingStyle.stroke
@@ -76,10 +86,10 @@ class EnemyComponent extends PositionComponent
   Future<void> onLoad() async {
     await super.onLoad();
 
-    size = Vector2.all(28);
+    size = Vector2.all(bodySize);
     anchor = Anchor.center;
 
-    _hitbox = CircleHitbox(radius: 12);
+    _hitbox = CircleHitbox(radius: hitboxRadius);
     add(_hitbox);
   }
 
@@ -87,7 +97,11 @@ class EnemyComponent extends PositionComponent
   void update(double dt) {
     super.update(dt);
 
+    if (game.isRewardPauseActive) return;
     if (_isDead) return;
+    if (isBoss) {
+      game.setBossHud(bossName, _hp, _maxHp);
+    }
 
     _attackCooldown = max(0, _attackCooldown - dt);
     _flashTimer = max(0, _flashTimer - dt);
@@ -104,7 +118,7 @@ class EnemyComponent extends PositionComponent
   void render(Canvas canvas) {
     super.render(canvas);
 
-    final bodyPaint = Paint()..color = (_flashTimer > 0) ? _flashColor : _baseColor;
+    final bodyPaint = Paint()..color = (_flashTimer > 0) ? flashColor : baseColor;
 
     final rect = Rect.fromCenter(
       center: Offset(size.x / 2, size.y / 2),
@@ -112,6 +126,14 @@ class EnemyComponent extends PositionComponent
       height: size.y,
     );
     canvas.drawRect(rect, bodyPaint);
+
+    if (drawEliteBorder) {
+      final border = Paint()
+        ..color = eliteBorderColor
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2;
+      canvas.drawRect(rect, border);
+    }
 
     if (_freezeLeft > 0) {
       _renderFreezeOverlay(canvas, rect);
@@ -132,7 +154,7 @@ class EnemyComponent extends PositionComponent
     final ratio = maxHp <= 0 ? 0.0 : (curHp / maxHp).clamp(0.0, 1.0);
 
     const barW = 30.0;
-    const barH = 4.0;
+    final barH = hpBarHeight;
 
     final cx = size.x / 2;
 
@@ -150,7 +172,7 @@ class EnemyComponent extends PositionComponent
       final fill = Rect.fromLTWH(barRect.left, barRect.top, barW * ratio, barH);
       canvas.drawRRect(
         RRect.fromRectAndRadius(fill, const Radius.circular(2)),
-        _hpFg,
+        Paint()..color = hpFillColor,
       );
     }
 
@@ -321,7 +343,10 @@ class EnemyComponent extends PositionComponent
     super.onCollisionStart(intersectionPoints, other);
     if (_isDead) return;
 
-    if (other is PlayerComponent) _tryAttack(other);
+    if (other is PlayerComponent) {
+      _resolvePlayerOverlap(other);
+      _tryAttack(other);
+    }
   }
 
   @override
@@ -329,7 +354,10 @@ class EnemyComponent extends PositionComponent
     super.onCollision(intersectionPoints, other);
     if (_isDead) return;
 
-    if (other is PlayerComponent) _tryAttack(other);
+    if (other is PlayerComponent) {
+      _resolvePlayerOverlap(other);
+      _tryAttack(other);
+    }
   }
 
   void _tryAttack(PlayerComponent player) {
@@ -341,6 +369,27 @@ class EnemyComponent extends PositionComponent
       attacker: this,
       sourceType: DamageSourceType.melee,
     );
+  }
+
+  /// Отталкиваем врага от игрока, чтобы не проходил насквозь.
+  void _resolvePlayerOverlap(PlayerComponent player) {
+    final dir = position - player.position;
+    final dist2 = dir.length2;
+    final minDist = (size.x / 2) + (player.size.x / 2);
+
+    if (dist2 == 0) {
+      position.add(Vector2(minDist, 0));
+      position = game.worldMap.clampToMap(position);
+      return;
+    }
+
+    final dist = sqrt(dist2);
+    final overlap = minDist - dist;
+    if (overlap <= 0) return;
+
+    dir.normalize();
+    position.add(dir * overlap);
+    position = game.worldMap.clampToMap(position);
   }
 
   @override
@@ -400,6 +449,11 @@ class EnemyComponent extends PositionComponent
   void _die() {
     if (_isDead) return;
     _isDead = true;
+
+    if (isBoss) {
+      game.clearBossHud();
+      game.showBossReward();
+    }
 
     _hitbox.collisionType = CollisionType.inactive;
 

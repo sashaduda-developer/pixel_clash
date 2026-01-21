@@ -64,6 +64,7 @@ class PlayerComponent extends PositionComponent
   void update(double dt) {
     super.update(dt);
 
+    if (game.isRewardPauseActive) return;
     if (_isDead) return;
 
     _flashTimer = max(0, _flashTimer - dt);
@@ -373,7 +374,13 @@ class PlayerComponent extends PositionComponent
       return;
     }
 
-    final dmg = max(1, rawDamage - stats.armor);
+    var dmg = max(1, rawDamage - stats.armor);
+    dmg = buffs.modifyIncomingDamage(
+      dmg,
+      sourceType: sourceType,
+      attacker: attacker,
+    );
+    if (dmg <= 0) return;
 
     // Пробрасываем атакующего для отражения/реакций баффов.
     buffs.emit(

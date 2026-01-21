@@ -6,6 +6,7 @@ import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:pixel_clash/game/components/combat/active_ability.dart';
 import 'package:pixel_clash/game/components/enemies/enemy_component.dart';
+import 'package:pixel_clash/game/components/enemies/types/skeleton_boss.dart';
 import 'package:pixel_clash/game/components/interactables/altar_component.dart';
 import 'package:pixel_clash/game/components/interactables/chest_component.dart';
 import 'package:pixel_clash/game/components/player/hero_type.dart';
@@ -66,6 +67,12 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
   final ValueNotifier<double> playerMana = ValueNotifier<double>(0);
   final ValueNotifier<double> playerMaxMana = ValueNotifier<double>(1);
 
+  // Boss HUD
+  final ValueNotifier<int> bossHp = ValueNotifier<int>(0);
+  final ValueNotifier<int> bossMaxHp = ValueNotifier<int>(0);
+  final ValueNotifier<String> bossName = ValueNotifier<String>('');
+  final ValueNotifier<String> announcementText = ValueNotifier<String>('');
+
   /// Слоты активных способностей (id или null).
   final ValueNotifier<List<String?>> abilitySlots =
       ValueNotifier<List<String?>>(List<String?>.filled(4, null));
@@ -75,6 +82,9 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
 
   final ValueNotifier<List<RewardDefinition>> rewardChoices =
       ValueNotifier<List<RewardDefinition>>(<RewardDefinition>[]);
+  final ValueNotifier<RewardDefinition?> bossRewardChoice = ValueNotifier<RewardDefinition?>(null);
+  final List<RewardSource> _rewardQueue = <RewardSource>[];
+  bool _rewardOverlayOpen = false;
 
   // ===== Build/Upgrades =====
   late final AppDatabase db;
@@ -86,6 +96,9 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
   // ===== HIT-STOP =====
   bool _hitStopInProgress = false;
   double _hitStopCooldown = 0;
+  bool _bossSpawned = false;
+  bool _bossWarned = false;
+  Timer? _announcementTimer;
 
   /// Лок паузы: когда открыт выбор награды, никто не имеет права снимать паузу.
   bool _rewardPauseLock = false;
@@ -141,7 +154,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
 
     biomeTimer = BiomeTimer(
       durationSeconds: GameConstants.biomeDurationSeconds,
-      onTimeChanged: (t) => timeLeft.value = t,
+      onTimeChanged: _onBiomeTimeChanged,
       onTimeIsOver: _onBiomeTimeOver,
     );
 
@@ -151,7 +164,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
       },
       onLevelChanged: (lv) => level.value = lv,
       onLevelUp: (_) {
-        unawaited(_pauseAndShowRewards(RewardSource.levelUp));
+        _enqueueRewardOverlay(RewardSource.levelUp);
       },
     );
 
@@ -184,6 +197,9 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
   }
 
   // ===== public helpers =====
+
+  /// Нужен для жёсткой паузы логики поверх оверлеев наград.
+  bool get isRewardPauseActive => _rewardPauseLock;
 
   void requestHitStop(double duration) {
     // Если открыт выбор награды — никакого hit-stop и главное:
@@ -225,6 +241,12 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     buildState.stacks.clear();
     runModifiers.reset();
     abilitySlots.value = List<String?>.filled(4, null);
+    _bossSpawned = false;
+    _bossWarned = false;
+    clearBossHud();
+    _announcementTimer?.cancel();
+    _announcementTimer = null;
+    announcementText.value = '';
 
     scoreSystem.reset();
     threatSystem.reset();
@@ -254,11 +276,37 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
 
     overlays.remove(Overlays.rewardPick);
     rewardChoices.value = <RewardDefinition>[];
+    overlays.remove(Overlays.bossReward);
+    bossRewardChoice.value = null;
+    _rewardQueue.clear();
+    _rewardOverlayOpen = false;
+    _rewardPauseLock = false;
 
     _hitStopInProgress = false;
     _hitStopCooldown = 0;
 
     resumeEngine();
+  }
+
+  void _spawnMainBoss() {
+    // ??????? ???????? ????? ?? ?????.
+    worldMap.children.whereType<SkeletonBossComponent>().forEach((b) => b.removeFromParent());
+
+    final p = player;
+    if (p == null) return;
+
+    final pos = worldMap.clampToMap(p.position + Vector2(220, 0));
+
+    worldMap.add(
+      SkeletonBossComponent(
+        position: pos,
+        speed: 70,
+        hp: 10,
+        damage: 14,
+        scoreReward: 40,
+        xpReward: 30,
+      ),
+    );
   }
 
   int mapSeedForIndex(int index) {
@@ -270,10 +318,14 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     worldMap.children.whereType<AltarComponent>().forEach((c) => c.removeFromParent());
 
     final mapRng = Random(mapSeedForIndex(mapIndex));
+    final used = <Vector2>[];
+    final avoidPoint = player?.position ?? (worldMap.mapSize / 2);
 
-    const chestCount = 12;
+    const chestCount = 100;
     for (var i = 0; i < chestCount; i++) {
-      final pos = _randomPointOnMap(mapRng);
+      final pos = _findFreeInteractablePoint(mapRng, used, avoidPoint);
+      if (pos == null) continue;
+      used.add(pos);
       worldMap.add(
         ChestComponent(
           position: pos,
@@ -283,9 +335,11 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
       );
     }
 
-    const altarCount = 4;
+    const altarCount = 100;
     for (var i = 0; i < altarCount; i++) {
-      final pos = _randomPointOnMap(mapRng);
+      final pos = _findFreeInteractablePoint(mapRng, used, avoidPoint);
+      if (pos == null) continue;
+      used.add(pos);
       worldMap.add(
         AltarComponent(
           position: pos,
@@ -307,14 +361,44 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     return Vector2(x, y);
   }
 
+  Vector2? _findFreeInteractablePoint(Random r, List<Vector2> used, Vector2 avoidPoint) {
+    const minFromPlayer = GameConstants.interactableMinDistFromPlayer;
+    const minBetween = GameConstants.interactableMinDistBetween;
+    const maxAttempts = GameConstants.interactableSpawnAttempts;
+
+    for (var i = 0; i < maxAttempts; i++) {
+      final p = _randomPointOnMap(r);
+      if (p.distanceToSquared(avoidPoint) < minFromPlayer * minFromPlayer) {
+        continue;
+      }
+
+      var ok = true;
+      for (final u in used) {
+        if (p.distanceToSquared(u) < minBetween * minBetween) {
+          ok = false;
+          break;
+        }
+      }
+
+      if (ok) return p;
+    }
+
+    return null;
+  }
+
   // ===== rewards entrypoints =====
 
   Future<void> onChestOpened() async {
-    await _pauseAndShowRewards(RewardSource.chest);
+    _enqueueRewardOverlay(RewardSource.chest);
   }
 
   Future<void> onAltarActivated() async {
-    await _pauseAndShowRewards(RewardSource.altar);
+    _enqueueRewardOverlay(RewardSource.altar);
+  }
+
+  /// Отдельный оверлей для награды босса.
+  void showBossReward() {
+    _enqueueRewardOverlay(RewardSource.boss);
   }
 
   /// Унифицированная точка показа наград.
@@ -322,33 +406,41 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
   /// - сначала ставим игру на паузу
   /// - потом роллим награды
   /// - если наград нет => паузу снимаем и ничего не показываем
-  Future<void> _pauseAndShowRewards(RewardSource source) async {
-    // Лочим паузу наград — пока не выберут карточку, не резюмим движок.
-    _rewardPauseLock = true;
+  Future<void> _openRewardOverlay(RewardSource source) async {
+    // Готовим показ награды и включаем паузу, если она еще не активна.
+    _rewardOverlayOpen = true;
+    if (!_rewardPauseLock) {
+      _rewardPauseLock = true;
+      pauseEngine();
+    }
 
-    // Останавливаем движок.
-    pauseEngine();
-
-    // Роллим награды.
+    final count = (source == RewardSource.chest || source == RewardSource.boss) ? 1 : 3;
     final rolled = await rewardRepository.roll(
       source: source,
-      count: 3,
+      count: count,
       rng: rng,
       l10n: l10n,
       game: this,
       build: buildState,
+      luckBonus: runModifiers.luckBonus,
     );
 
-    // Если наград нет — снимаем лок и продолжаем игру.
+    // Если наград нет, закрываем цикл и идем дальше.
     if (rolled.isEmpty) {
-      _rewardPauseLock = false;
-      resumeEngine();
+      _finishRewardOverlay();
       return;
     }
 
-    rewardChoices.value = rolled;
-    if (!overlays.isActive(Overlays.rewardPick)) {
-      overlays.add(Overlays.rewardPick);
+    if (source == RewardSource.boss) {
+      bossRewardChoice.value = rolled.first;
+      if (!overlays.isActive(Overlays.bossReward)) {
+        overlays.add(Overlays.bossReward);
+      }
+    } else {
+      rewardChoices.value = rolled;
+      if (!overlays.isActive(Overlays.rewardPick)) {
+        overlays.add(Overlays.rewardPick);
+      }
     }
   }
 
@@ -359,9 +451,26 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     overlays.remove(Overlays.rewardPick);
     rewardChoices.value = <RewardDefinition>[];
 
-    // Снимаем лок и продолжаем игру.
-    _rewardPauseLock = false;
-    resumeEngine();
+    _finishRewardOverlay();
+  }
+
+  void applyBossRewardAndResume() {
+    final reward = bossRewardChoice.value;
+    if (reward == null) return;
+
+    reward.apply(this);
+
+    overlays.remove(Overlays.bossReward);
+    bossRewardChoice.value = null;
+
+    _finishRewardOverlay();
+  }
+
+  void skipRewardAndResume() {
+    overlays.remove(Overlays.rewardPick);
+    rewardChoices.value = <RewardDefinition>[];
+
+    _finishRewardOverlay();
   }
 
   // ===== HUD sync / lifecycle =====
@@ -383,6 +492,44 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     playerArmor.value = p.stats.armor;
     playerMana.value = p.stats.mana;
     playerMaxMana.value = p.stats.maxMana;
+  }
+
+  void _onBiomeTimeChanged(double t) {
+    timeLeft.value = t;
+
+    if (!_bossWarned &&
+        t <= GameConstants.bossSpawnTimeLeftSeconds + GameConstants.bossWarningLeadSeconds &&
+        t > GameConstants.bossSpawnTimeLeftSeconds) {
+      _bossWarned = true;
+      showAnnouncement(l10n.t('boss_warning'), seconds: GameConstants.bossWarningLeadSeconds);
+    }
+
+    if (_bossSpawned) return;
+    if (t > GameConstants.bossSpawnTimeLeftSeconds) return;
+
+    _bossSpawned = true;
+    _spawnMainBoss();
+  }
+
+  void showAnnouncement(String text, {double seconds = 2.0}) {
+    announcementText.value = text;
+    _announcementTimer?.cancel();
+    _announcementTimer = Timer(
+      Duration(milliseconds: (seconds * 1000).round()),
+      () => announcementText.value = '',
+    );
+  }
+
+  void setBossHud(String name, int hp, int maxHp) {
+    bossName.value = name;
+    bossHp.value = hp;
+    bossMaxHp.value = maxHp;
+  }
+
+  void clearBossHud() {
+    bossName.value = '';
+    bossHp.value = 0;
+    bossMaxHp.value = 0;
   }
 
   /// Регистрирует активную способность в слоте (первый свободный).
@@ -433,6 +580,30 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
   void _onBiomeTimeOver() {
     enemySpawner.isPaused = true;
     overlays.add(Overlays.heroSelect);
+  }
+
+  void _enqueueRewardOverlay(RewardSource source) {
+    if (_rewardOverlayOpen ||
+        overlays.isActive(Overlays.rewardPick) ||
+        overlays.isActive(Overlays.bossReward)) {
+      _rewardQueue.add(source);
+      return;
+    }
+
+    unawaited(_openRewardOverlay(source));
+  }
+
+  void _finishRewardOverlay() {
+    _rewardOverlayOpen = false;
+
+    if (_rewardQueue.isNotEmpty) {
+      final next = _rewardQueue.removeAt(0);
+      unawaited(_openRewardOverlay(next));
+      return;
+    }
+
+    _rewardPauseLock = false;
+    resumeEngine();
   }
 
   EnemyComponent? findNearestEnemyInRadius(

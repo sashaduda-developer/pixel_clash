@@ -1,3 +1,4 @@
+import 'package:flame/components.dart';
 import 'package:pixel_clash/game/components/combat/combat_event.dart';
 import 'package:pixel_clash/game/components/combat/rarity.dart';
 import 'package:pixel_clash/game/components/player/player_component.dart';
@@ -34,4 +35,14 @@ abstract class Buff {
 
   /// Апдейт баффа по времени (таймеры/ауры/активные способности).
   void onUpdate(PlayerComponent owner, double dt) {}
+}
+
+/// Интерфейс для модификации входящего урона.
+abstract class IncomingDamageModifier {
+  int modifyIncomingDamage(
+    PlayerComponent owner,
+    int damage,
+    DamageSourceType sourceType,
+    PositionComponent? attacker,
+  );
 }

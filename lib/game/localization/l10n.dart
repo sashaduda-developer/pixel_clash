@@ -32,6 +32,10 @@ class L10n {
       'choose_hero': 'Выбор героя',
       'choose_upgrade': 'Выбор улучшения',
       'tap_one_of_three': 'Выбери 1 из 3',
+      'reward_level': 'Уровень: {cur}/{max}',
+      'reward_level_next': 'Уровень: {cur} -> {next}/{max}',
+      'reward_level_new': 'Уровень: {next}/{max}',
+      'reward_level_stats': 'Характеристики: {value}',
 
       // Герои
       'hero_ranger_title': 'Рейнджер (лук)',
@@ -87,8 +91,7 @@ class L10n {
 
       // ===== ALTAR v2 (редкость = класс скилла) =====
       'altar_freeze_aura_title': 'Аура заморозки',
-      'altar_freeze_aura_desc':
-          'Периодически замораживает ближайших врагов вокруг тебя. Повторный выбор повышает уровень.',
+      'altar_freeze_aura_desc': 'Периодически замораживает ближайших врагов вокруг тебя.',
 
       'altar_ignite_title': 'Поджог',
       'altar_ignite_desc': 'Иногда удар поджигает цель, нанося урон со временем.',
@@ -146,14 +149,33 @@ class L10n {
 
       'chest_book_hardship_title': 'Книга испытаний',
       'chest_book_hardship_desc': 'В твоём ране враги появляются чаще: +{value}%.',
+      'chest_book_chaos_title': 'Книга хаоса',
+      'chest_book_chaos_desc': 'Ран становится хаотичнее и опаснее.',
+      'chest_book_luck_title': 'Книга удачи',
+      'chest_book_luck_desc': 'Удача выше, но цена есть.',
+      'chest_book_knowledge_title': 'Книга знаний',
+      'chest_book_knowledge_desc': 'Убиваешь — учишься быстрее.',
       'altar_vamp_title': 'Вампиризм',
-      'altar_vamp_desc': 'Каждый удар лечит тебя на {value}% от нанесённого урона.',
+      'altar_vamp_desc': 'Каждый удар лечит тебя от нанесённого урона.',
+      'boss_phoenix_heart_title': 'Сердце феникса',
+      'boss_phoenix_heart_desc': 'Один раз спасает от смерти и даёт неуязвимость.',
+      'boss_time_crystal_title': 'Кристалл времени',
+      'boss_time_crystal_desc': 'Раз в 25 сек лечит урон, полученный за 2 сек.',
+      'boss_titan_shield_title': 'Щит титана',
+      'boss_titan_shield_desc': 'Первый удар раз в 12 сек полностью игнорируется.',
+      'boss_storm_heart_title': 'Сердце молний',
+      'boss_storm_heart_desc': 'Каждый 5-й полученный удар бьёт молнией врагов.',
+      'boss_warning': 'ВЫХОДИТ БОСС',
     },
     AppLocale.en: {
       'game_title': 'PIXEL CLASH',
       'choose_hero': 'Choose Hero',
       'choose_upgrade': 'Choose Upgrade',
       'tap_one_of_three': 'Pick 1 of 3',
+      'reward_level': 'Level: {cur}/{max}',
+      'reward_level_next': 'Level: {cur} -> {next}/{max}',
+      'reward_level_new': 'Level: {next}/{max}',
+      'reward_level_stats': 'Stats: {value}',
       'hero_ranger_title': 'Ranger (Bow)',
       'hero_ranger_subtitle': 'Ranged, kiting',
       'hero_knight_title': 'Knight (Sword/Shield)',
@@ -195,8 +217,7 @@ class L10n {
 
       // ===== ALTAR v2 (rarity = skill class) =====
       'altar_freeze_aura_title': 'Freeze Aura',
-      'altar_freeze_aura_desc':
-          'Periodically freezes nearby enemies around you. Picking it again increases its level.',
+      'altar_freeze_aura_desc': 'Periodically freezes nearby enemies around you.',
 
       'altar_ignite_title': 'Ignite',
       'altar_ignite_desc': 'Sometimes your hit ignites the target, dealing damage over time.',
@@ -247,8 +268,23 @@ class L10n {
       'altar_thorns_desc': 'Stub for now: later a portion of damage will be reflected back.',
       'chest_book_hardship_title': 'Book of Hardship',
       'chest_book_hardship_desc': 'In your run enemies spawn more often: +{value}%.',
+      'chest_book_chaos_title': 'Book of Chaos',
+      'chest_book_chaos_desc': 'The run becomes more chaotic and dangerous.',
+      'chest_book_luck_title': 'Book of Luck',
+      'chest_book_luck_desc': 'Luck rises, but it costs you.',
+      'chest_book_knowledge_title': 'Book of Knowledge',
+      'chest_book_knowledge_desc': 'Kills teach you faster.',
       'altar_vamp_title': 'Vampirism',
-      'altar_vamp_desc': 'Each hit heals you for {value}% of damage dealt.',
+      'altar_vamp_desc': 'Each hit heals you from damage dealt.',
+      'boss_phoenix_heart_title': 'Phoenix Heart',
+      'boss_phoenix_heart_desc': 'Once saves you from death and grants invulnerability.',
+      'boss_time_crystal_title': 'Time Crystal',
+      'boss_time_crystal_desc': 'Every 25s heals damage taken in the last 2s.',
+      'boss_titan_shield_title': 'Titan Shield',
+      'boss_titan_shield_desc': 'First hit every 12s is fully ignored.',
+      'boss_storm_heart_title': 'Storm Heart',
+      'boss_storm_heart_desc': 'Every 5th hit triggers lightning on enemies.',
+      'boss_warning': 'BOSS APPROACHING',
     },
   };
 }

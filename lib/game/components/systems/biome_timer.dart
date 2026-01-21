@@ -1,4 +1,6 @@
-import 'package:flame/components.dart';
+import 'dart:async';
+
+import 'package:flame/components.dart' hide Timer;
 import 'package:flutter/material.dart';
 
 /// Таймер биома.
@@ -18,11 +20,16 @@ class BiomeTimer extends Component {
   double _timeLeft = 0;
   bool _isRunning = false;
   bool _isOver = false;
+  DateTime? _startTime;
+  Timer? _ticker;
 
   void resetAndStart() {
     _timeLeft = durationSeconds;
     _isRunning = true;
     _isOver = false;
+    _startTime = DateTime.now();
+    _ticker?.cancel();
+    _ticker = Timer.periodic(const Duration(milliseconds: 200), (_) => _tick());
     onTimeChanged(_timeLeft);
   }
 
@@ -30,18 +37,34 @@ class BiomeTimer extends Component {
   void update(double dt) {
     super.update(dt);
 
+    // Логика таймера обновляется реальным временем через Timer.
+  }
+
+  void _tick() {
     if (!_isRunning || _isOver) return;
 
-    _timeLeft -= dt;
+    final start = _startTime;
+    if (start == null) return;
+
+    final elapsed = DateTime.now().difference(start).inMilliseconds / 1000.0;
+    _timeLeft = (durationSeconds - elapsed).clamp(0.0, durationSeconds);
 
     if (_timeLeft <= 0) {
       _timeLeft = 0;
       _isOver = true;
+      _isRunning = false;
+      _ticker?.cancel();
       onTimeChanged(_timeLeft);
       onTimeIsOver();
       return;
     }
 
     onTimeChanged(_timeLeft);
+  }
+
+  @override
+  void onRemove() {
+    _ticker?.cancel();
+    super.onRemove();
   }
 }

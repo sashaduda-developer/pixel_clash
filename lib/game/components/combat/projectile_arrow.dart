@@ -88,6 +88,7 @@ class ProjectileArrow extends PositionComponent with CollisionCallbacks {
   void update(double dt) {
     super.update(dt);
 
+    if (owner.game.isRewardPauseActive) return;
     _life += dt;
     if (_life >= maxLifeSeconds) {
       removeFromParent();

@@ -1,3 +1,4 @@
+import 'package:flame/components.dart';
 import 'package:pixel_clash/game/components/combat/buff.dart';
 import 'package:pixel_clash/game/components/combat/combat_event.dart';
 import 'package:pixel_clash/game/components/player/player_component.dart';
@@ -58,6 +59,23 @@ class BuffSystem {
     for (final b in snapshot) {
       b.onEvent(owner, event);
     }
+  }
+
+  /// Позволяет бафам менять входящий урон (например, блок/щит).
+  int modifyIncomingDamage(
+    int damage, {
+    required DamageSourceType sourceType,
+    required PositionComponent? attacker,
+  }) {
+    var result = damage;
+    final snapshot = List<Buff>.from(_buffs);
+    for (final b in snapshot) {
+      if (b is IncomingDamageModifier) {
+        result = (b as IncomingDamageModifier)
+            .modifyIncomingDamage(owner, result, sourceType, attacker);
+      }
+    }
+    return result.clamp(0, 999999);
   }
   /// Апдейт баффов по времени (ауры/кулдауны/активки).
   void update(double dt) {

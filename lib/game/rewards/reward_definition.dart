@@ -7,6 +7,7 @@ enum RewardSource {
   levelUp,
   chest,
   altar,
+  boss,
   vendor,
 }
 
@@ -16,6 +17,24 @@ enum RewardKind {
   ability,
   item,
   stat,
+}
+
+enum RewardStatPolarity {
+  positive,
+  negative,
+  neutral,
+}
+
+class RewardStat {
+  RewardStat({
+    required this.label,
+    required this.value,
+    required this.polarity,
+  });
+
+  final String label;
+  final String value;
+  final RewardStatPolarity polarity;
 }
 
 /// Универсальная награда, из которой строится карточка.
@@ -29,6 +48,10 @@ class RewardDefinition {
     required this.title,
     required this.description,
     required this.icon,
+    this.stats,
+    this.currentLevel,
+    this.nextLevel,
+    this.maxLevel,
     required this.apply,
   });
 
@@ -43,6 +66,14 @@ class RewardDefinition {
 
   /// Иконка карточки (позже заменим на sprite/asset).
   final IconData icon;
+
+  /// Набор характеристик для отображения отдельным блоком.
+  final List<RewardStat>? stats;
+
+  /// Уровни для карточек с прогрессом (алтарные бафы/абилки).
+  final int? currentLevel;
+  final int? nextLevel;
+  final int? maxLevel;
 
   final void Function(PixelClashGame game) apply;
 }

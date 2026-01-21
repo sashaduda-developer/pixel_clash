@@ -1,11 +1,12 @@
 import 'dart:math';
 
 import 'package:flame/components.dart';
-import 'package:pixel_clash/game/components/enemies/enemy_component.dart';
-import 'package:pixel_clash/game/config/game_constants.dart';
-import 'package:pixel_clash/game/pixel_clash_game.dart';
+import 'package:pixel_clash/game/components/enemies/enemy_factory.dart';
+import 'package:pixel_clash/game/components/enemies/types/skeleton_enemy_factory.dart';
 import 'package:pixel_clash/game/components/systems/score_system.dart';
 import 'package:pixel_clash/game/components/systems/threat_system.dart';
+import 'package:pixel_clash/game/config/game_constants.dart';
+import 'package:pixel_clash/game/pixel_clash_game.dart';
 
 class EnemySpawner extends Component with HasGameReference<PixelClashGame> {
   EnemySpawner({
@@ -20,11 +21,15 @@ class EnemySpawner extends Component with HasGameReference<PixelClashGame> {
 
   final Random _rng = Random();
   double _cooldown = 0;
+  final List<EnemyFactory> _factories = <EnemyFactory>[
+    SkeletonEnemyFactory(),
+  ];
 
   @override
   void update(double dt) {
     super.update(dt);
 
+    if (game.isRewardPauseActive) return;
     if (isPaused) return;
 
     final p = game.player;
@@ -73,25 +78,55 @@ class EnemySpawner extends Component with HasGameReference<PixelClashGame> {
     final t = threatSystem.level;
 
     // Пока сила врагов зависит только от threat (как у тебя сейчас).
-    final hp = 20 + t * 6;
-    final dmg = 6 + t * 2;
+    var hp = 20 + t * 6;
+    var dmg = 6 + t * 2;
     final speed = 95 + t * 6;
 
     // Очки уже зависят от "силы" (через threat multiplier).
-    final scoreReward = (1 * threatSystem.scoreMultiplier).round().clamp(1, 999);
+    var scoreReward = (1 * threatSystem.scoreMultiplier).round().clamp(1, 999);
 
     // XP тоже зависит от threat (слегка).
-    final xpReward = (2 + t * 0.5).round().clamp(1, 99);
+    var xpReward = (2 + t * 0.5).round().clamp(1, 99);
 
-    world.add(
-      EnemyComponent(
-        position: pos,
-        speed: speed.toDouble(),
-        hp: hp,
-        damage: dmg,
-        scoreReward: scoreReward,
-        xpReward: xpReward,
-      ),
-    );
+    // Элитные враги: сильнее и дают больше награды.
+    final isElite = _rng.nextDouble() < game.runModifiers.eliteChance;
+    if (isElite) {
+      hp = (hp * game.runModifiers.eliteHpMultiplier).round().clamp(1, 999999);
+      dmg = (dmg * game.runModifiers.eliteDmgMultiplier).round().clamp(1, 999999);
+      scoreReward = (scoreReward * game.runModifiers.eliteScoreMultiplier).round().clamp(1, 999999);
+      xpReward = (xpReward * GameConstants.eliteBaseXpMultiplier).round().clamp(1, 999999);
+      xpReward = (xpReward * game.runModifiers.eliteXpMultiplier).round().clamp(1, 999999);
+    }
+
+    xpReward = (xpReward * game.runModifiers.xpGainMultiplier).round().clamp(1, 999999);
+
+    final factory = _pickFactory();
+    final enemy = isElite
+        ? factory.createElite(
+            position: pos,
+            speed: speed.toDouble(),
+            hp: hp,
+            damage: dmg,
+            scoreReward: scoreReward,
+            xpReward: xpReward,
+          )
+        : factory.createNormal(
+            position: pos,
+            speed: speed.toDouble(),
+            hp: hp,
+            damage: dmg,
+            scoreReward: scoreReward,
+            xpReward: xpReward,
+          );
+
+    world.add(enemy);
+  }
+
+  EnemyFactory _pickFactory() {
+    if (_factories.isEmpty) {
+      // Fallback, но список всегда должен быть заполнен.
+      return SkeletonEnemyFactory();
+    }
+    return _factories[_rng.nextInt(_factories.length)];
   }
 }
