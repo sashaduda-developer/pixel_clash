@@ -6,9 +6,14 @@ abstract class GameConstants {
   static const double cameraHeight = 450;
 
   // Длительность биома в секундах (0.1).
-  static const double biomeDurationSeconds = 250; // 7 минут
+  static const double biomeDurationSeconds = 420; // 7 минут
   static const double bossSpawnTimeLeftSeconds = 240; // 4 минуты до конца биома
   static const double bossWarningLeadSeconds = 5; // предупреждение за N секунд до босса
+  static const double swarmTimeLeftSeconds = 300;
+  static const double swarmWarningLeadSeconds = 5;
+  static const int swarmSpawnBaseCount = 30;
+  static const int swarmSpawnThreatBonus = 3;
+  static const double swarmEliteChanceBonus = 0.08;
   static const double baseEliteChance = 0.04; // базовый шанс элитных без предметов
 
   // Размер карты мира (позже будет тайлсет/генерация).
@@ -19,9 +24,6 @@ abstract class GameConstants {
   static const double enemySpawnMinDist = 520;
   static const double enemySpawnMaxDist = 780;
   static const double eliteBaseXpMultiplier = 2.0;
-
-  // Период появления карты угрозы.
-  static const double threatCardPeriodSeconds = 14;
 
   // Минимальные дистанции для интерактивов.
   static const double interactableMinDistFromPlayer = 220;

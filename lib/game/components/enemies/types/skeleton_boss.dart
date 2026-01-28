@@ -5,11 +5,11 @@ import 'package:pixel_clash/game/components/enemies/enemy_component.dart';
 class SkeletonBossComponent extends EnemyComponent {
   SkeletonBossComponent({
     required super.position,
-    required super.speed,
-    required super.hp,
-    required super.damage,
-    required super.scoreReward,
-    required super.xpReward,
+    super.speed = 70,
+    super.hp = 260,
+    super.damage = 14,
+    super.scoreReward = 40,
+    super.xpReward = 30,
   });
 
   @override

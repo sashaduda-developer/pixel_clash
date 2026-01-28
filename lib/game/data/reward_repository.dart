@@ -5,6 +5,7 @@ import 'package:pixel_clash/game/components/combat/rarity.dart';
 import 'package:pixel_clash/game/data/app_database.dart';
 import 'package:pixel_clash/game/data/reward_seeder.dart';
 import 'package:pixel_clash/game/localization/l10n.dart';
+import 'package:pixel_clash/game/components/player/hero_type.dart';
 import 'package:pixel_clash/game/rewards/icon_registry.dart';
 import 'package:pixel_clash/game/rewards/player_build_state.dart';
 import 'package:pixel_clash/game/rewards/reward_definition.dart';
@@ -30,7 +31,14 @@ class RewardRepository {
     required PixelClashGame game,
     required PlayerBuildState build,
     double luckBonus = 0.0,
+    Set<String>? excludeIds,
+    Rarity? minRarity,
+    RewardKind? requiredKind,
+    Rarity? requiredRarity,
   }) async {
+    final excluded = excludeIds ?? const <String>{};
+    final requiredKindName = requiredKind?.name;
+    final requiredRarityName = requiredRarity?.name;
     // 1) Пытаемся взять строки текущей версии.
     var rows = await _loadRows(source: source, version: RewardSeeder.currentVersion);
 
@@ -45,6 +53,9 @@ class RewardRepository {
 
     // 3) Доп. защита от мусорных строк (пустые ключи и т.п.)
     rows = rows.where((r) {
+      if (excluded.contains(r.id)) return false;
+      if (requiredKindName != null && r.kind != requiredKindName) return false;
+      if (requiredRarityName != null && r.rarity != requiredRarityName) return false;
       if (r.id.trim().isEmpty) return false;
       if (r.titleKey.trim().isEmpty) return false;
       if (r.descKey.trim().isEmpty) return false;
@@ -53,13 +64,23 @@ class RewardRepository {
       return true;
     }).toList();
 
+    if (source == RewardSource.altar) {
+      final heroKey = _heroKey(game.player?.heroType);
+      if (heroKey != null) {
+        rows = rows.where((r) => _matchesHero(r, heroKey)).toList();
+      }
+    }
+
     if (rows.isEmpty) return <RewardDefinition>[];
 
     final usedIds = <String>{};
     final result = <RewardDefinition>[];
 
     for (var i = 0; i < count; i++) {
-      final rolledRarity = _rollRarityForSource(rng, source, luckBonus);
+      var rolledRarity = requiredRarity ?? _rollRarityForSource(rng, source, luckBonus);
+      if (requiredRarity == null && minRarity != null && rolledRarity.index < minRarity.index) {
+        rolledRarity = minRarity;
+      }
 
       final byRarity = rows.where((r) {
         if (r.rarity != rolledRarity.name) return false;
@@ -250,7 +271,7 @@ class RewardRepository {
       if (stat == 'attackSpeed') {
         return l10n.tParams(descKey, {'value': delta.toStringAsFixed(2)});
       }
-      if (stat == 'manaRegen') {
+      if (stat == 'manaRegen' || stat == 'hpRegen') {
         return l10n.tParams(descKey, {'value': delta.toStringAsFixed(1)});
       }
       return l10n.tParams(descKey, {'value': '${delta.round()}'}); 
@@ -269,6 +290,24 @@ class RewardRepository {
     }
 
     return l10n.t(descKey);
+  }
+
+  String? _heroKey(HeroType? type) {
+    if (type == null) return null;
+    return switch (type) {
+      HeroType.ranger => 'ranger',
+      HeroType.knight => 'knight',
+      HeroType.mage => 'mage',
+      HeroType.ninja => 'ninja',
+    };
+  }
+
+  bool _matchesHero(RewardDbRow row, String heroKey) {
+    final params = _decodeParams(row.paramsJson);
+    final hero = params['hero'];
+    if (hero == null) return true;
+    if (hero is! String) return false;
+    return hero == heroKey;
   }
 
   int? _maxLevelFromParams(Map<String, Object?> params) {
@@ -382,6 +421,17 @@ class RewardRepository {
       'eliteScoreMult' => 'Очки элитных',
       'eliteXpMult' => 'XP элитных',
       'luckBonusAdd' => 'Удача',
+      'lifestealAdd' => 'Вампиризм',
+      'critChanceAdd' => 'Крит шанс',
+      'bossDamageMult' => 'Урон по боссам',
+      'moveSpeedPct' => 'Скорость',
+      'armorPct' => 'Броня',
+      'armorDelta' => 'Броня',
+      'attackSpeedPct' => 'Скорость атаки',
+      'maxManaPct' => 'Макс мана',
+      'maxHpPct' => 'Макс HP',
+      'reflectPct' => 'Отражение',
+      'healMultiplier' => 'Исцеление',
       'maxHpDelta' => 'Макс HP',
       'damageDelta' => 'Урон',
       'xpGainMult' => 'XP',
@@ -398,7 +448,20 @@ class RewardRepository {
       case 'eliteChanceAdd':
       case 'eliteXpMult':
       case 'luckBonusAdd':
+      case 'lifestealAdd':
+      case 'critChanceAdd':
+      case 'moveSpeedPct':
+      case 'attackSpeedPct':
+      case 'reflectPct':
         return '${(v * 100).round()}%';
+      case 'armorPct':
+      case 'maxManaPct':
+      case 'maxHpPct':
+        return '-${(v * 100).round()}%';
+      case 'bossDamageMult':
+      case 'healMultiplier':
+        final pct = ((v - 1) * 100).round();
+        return pct >= 0 ? '+$pct%' : '$pct%';
       case 'xpGainMult':
         return '+${(v * 100).round()}%';
       case 'eliteHpMult':
@@ -407,6 +470,7 @@ class RewardRepository {
         return 'x${v.toStringAsFixed(2)}';
       case 'maxHpDelta':
       case 'damageDelta':
+      case 'armorDelta':
         return v >= 0 ? '+${v.round()}' : '${v.round()}';
     }
 
@@ -426,15 +490,36 @@ class RewardRepository {
       case 'eliteXpMult':
       case 'luckBonusAdd':
       case 'xpGainMult':
+      case 'lifestealAdd':
+      case 'critChanceAdd':
+      case 'moveSpeedPct':
+      case 'attackSpeedPct':
+      case 'reflectPct':
         return RewardStatPolarity.positive;
       case 'maxHpDelta':
       case 'damageDelta':
+      case 'armorDelta':
         return v < 0 ? RewardStatPolarity.negative : RewardStatPolarity.positive;
+      case 'armorPct':
+      case 'maxManaPct':
+      case 'maxHpPct':
+        return RewardStatPolarity.negative;
+      case 'bossDamageMult':
+      case 'healMultiplier':
+        if (v < 1) return RewardStatPolarity.negative;
+        if (v > 1) return RewardStatPolarity.positive;
+        return RewardStatPolarity.neutral;
       case 'manaCost':
         return RewardStatPolarity.negative;
       case 'damageMultiplier':
         if (v > 1) return RewardStatPolarity.positive;
         if (v < 1) return RewardStatPolarity.negative;
+        return RewardStatPolarity.neutral;
+      case 'thirdHitChance':
+      case 'thirdHitDamageMultiplier':
+      case 'critBonusMultiplier':
+        return RewardStatPolarity.positive;
+      case 'hitsToStun':
         return RewardStatPolarity.neutral;
       case 'cooldownSec':
       case 'internalCooldownSec':
@@ -480,6 +565,10 @@ class RewardRepository {
       'damageMultiplier' => 'Множитель',
       'healPctMaxHp' => 'Хил',
       'stacksToExplode' => 'Стаки',
+      'thirdHitChance' => 'Шанс 3-го удара',
+      'thirdHitDamageMultiplier' => 'Урон 3-го',
+      'critBonusMultiplier' => 'Усиление крита',
+      'hitsToStun' => 'Удары до стана',
       _ => null,
     };
   }
@@ -498,6 +587,9 @@ class RewardRepository {
       case 'lifesteal':
       case 'damageMultiplier':
       case 'healPctMaxHp':
+      case 'thirdHitChance':
+      case 'thirdHitDamageMultiplier':
+      case 'critBonusMultiplier':
         return '${(v * 100).round()}%';
       case 'radius':
         return '${v.toStringAsFixed(1)}м';
@@ -515,6 +607,7 @@ class RewardRepository {
       case 'stacksToExplode':
       case 'pierceCount':
       case 'bounces':
+      case 'hitsToStun':
         return '${v.round()}';
     }
 

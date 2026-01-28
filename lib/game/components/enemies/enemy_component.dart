@@ -406,6 +406,12 @@ class EnemyComponent extends PositionComponent
   }) {
     if (_isDead) return;
 
+    var finalDamage = value;
+    if (isBoss && attacker is PlayerComponent) {
+      final mult = game.runModifiers.bossDamageMultiplier;
+      finalDamage = max(1, (finalDamage * mult).round());
+    }
+
     _lastAttacker = attacker;
 
     if (showHitEffects) {
@@ -418,7 +424,7 @@ class EnemyComponent extends PositionComponent
       game.worldMap.add(
         DamageNumberComponent(
           position: position + Vector2(0, -18),
-          value: value,
+          value: finalDamage,
           color: isCrit ? const Color(0xFFFFD54F) : const Color(0xFFFFF176),
           scaleFactor: isCrit ? 1.35 : 1.0,
         ),
@@ -442,7 +448,7 @@ class EnemyComponent extends PositionComponent
       }
     }
 
-    _hp -= value;
+    _hp -= finalDamage;
     if (_hp <= 0) _die();
   }
 
@@ -469,6 +475,8 @@ class EnemyComponent extends PositionComponent
         ),
       );
     }
+
+    game.onEnemyKilled(this);
 
     Future<void>.microtask(() {
       if (!isRemoving) removeFromParent();

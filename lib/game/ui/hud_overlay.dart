@@ -93,26 +93,14 @@ class HudOverlay extends StatelessWidget {
                             ],
                           );
                         },
-                      ),
-                      ValueListenableBuilder<double>(
-                        valueListenable: game.timeLeft,
-                        builder: (_, v, __) =>
-                            Text('${l10n.t('hud_timer')}: ${v.toStringAsFixed(0)}'),
-                      ),
-                      ValueListenableBuilder<int>(
+                      ),                      ValueListenableBuilder<int>(
                         valueListenable: game.score,
                         builder: (_, v, __) => Text('${l10n.t('hud_score')}: $v'),
                       ),
                       ValueListenableBuilder<int>(
-                        valueListenable: game.threatLevel,
-                        builder: (_, v, __) => Text(
-                          '${l10n.t('hud_threat')}: $v ${l10n.t('hud_threat_multiplier')}',
-                        ),
-                      ),
-                      ValueListenableBuilder<int>(
                         valueListenable: game.keysFound,
                         builder: (_, v, __) =>
-                            Text('${l10n.t('hud_keys')}: $v/3 ${l10n.t('hud_keys_todo')}'),
+                            Text('${l10n.t('hud_keys')}: $v/${PixelClashGame.requiredKeys}'),
                       ),
                       const SizedBox(height: 8),
                       ValueListenableBuilder<int>(

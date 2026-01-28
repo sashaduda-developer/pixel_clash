@@ -5,10 +5,14 @@ import 'package:flame/components.dart' hide Timer;
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:pixel_clash/game/components/combat/active_ability.dart';
+import 'package:pixel_clash/game/components/combat/rarity.dart';
 import 'package:pixel_clash/game/components/enemies/enemy_component.dart';
+import 'package:pixel_clash/game/components/enemies/types/final_boss.dart';
 import 'package:pixel_clash/game/components/enemies/types/skeleton_boss.dart';
 import 'package:pixel_clash/game/components/interactables/altar_component.dart';
 import 'package:pixel_clash/game/components/interactables/chest_component.dart';
+import 'package:pixel_clash/game/components/interactables/key_component.dart';
+import 'package:pixel_clash/game/components/interactables/portal_component.dart';
 import 'package:pixel_clash/game/components/player/hero_type.dart';
 import 'package:pixel_clash/game/components/player/player_component.dart';
 import 'package:pixel_clash/game/components/systems/biome_timer.dart';
@@ -33,6 +37,8 @@ import 'package:pixel_clash/game/ui/overlays.dart';
 class PixelClashGame extends FlameGame with HasCollisionDetection {
   PixelClashGame();
 
+  static const int requiredKeys = 3;
+
   final int seed = DateTime.now().millisecondsSinceEpoch;
   late final Random rng = Random(seed);
   int mapIndex = 0;
@@ -41,6 +47,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
   late final CameraComponent cam;
 
   PlayerComponent? player;
+  PortalComponent? _portal;
 
   late final BiomeTimer biomeTimer;
   late final ThreatSystem threatSystem;
@@ -98,10 +105,21 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
   double _hitStopCooldown = 0;
   bool _bossSpawned = false;
   bool _bossWarned = false;
+  bool _mainBossKeyDropped = false;
+  bool _finalBossSpawned = false;
+  bool _finalBossDefeated = false;
+  bool _portalTransitionInProgress = false;
+  bool _swarmSpawned = false;
+  bool _swarmWarned = false;
   Timer? _announcementTimer;
 
   /// Лок паузы: когда открыт выбор награды, никто не имеет права снимать паузу.
   bool _rewardPauseLock = false;
+  final Set<String> _chestSeenRewardIds = <String>{};
+  int _chestCommonStreak = 0;
+  int _altarNoAbilityStreak = 0;
+  int _legendaryNoHitStreak = 0;
+  final Set<String> _bossSeenRewardIds = <String>{};
 
   // ===== CAMERA SHAKE (только на крит) =====
   double _shakeLeft = 0;
@@ -239,10 +257,24 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
 
     // билд сбрасываем на новый ран
     buildState.stacks.clear();
+    _chestSeenRewardIds.clear();
+    _chestCommonStreak = 0;
+    _altarNoAbilityStreak = 0;
+    _legendaryNoHitStreak = 0;
+    _bossSeenRewardIds.clear();
     runModifiers.reset();
     abilitySlots.value = List<String?>.filled(4, null);
+    mapIndex = 0;
+    keysFound.value = 0;
     _bossSpawned = false;
     _bossWarned = false;
+    _mainBossKeyDropped = false;
+    _finalBossSpawned = false;
+    _finalBossDefeated = false;
+    _portalTransitionInProgress = false;
+    _portal = null;
+    _swarmSpawned = false;
+    _swarmWarned = false;
     clearBossHud();
     _announcementTimer?.cancel();
     _announcementTimer = null;
@@ -289,7 +321,6 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
   }
 
   void _spawnMainBoss() {
-    // ??????? ???????? ????? ?? ?????.
     worldMap.children.whereType<SkeletonBossComponent>().forEach((b) => b.removeFromParent());
 
     final p = player;
@@ -300,11 +331,21 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     worldMap.add(
       SkeletonBossComponent(
         position: pos,
-        speed: 70,
-        hp: 10,
-        damage: 14,
-        scoreReward: 40,
-        xpReward: 30,
+      ),
+    );
+  }
+
+  void _spawnFinalBoss() {
+    worldMap.children.whereType<FinalBossComponent>().forEach((b) => b.removeFromParent());
+
+    final p = player;
+    if (p == null) return;
+
+    final pos = worldMap.clampToMap(p.position + Vector2(260, -40));
+
+    worldMap.add(
+      FinalBossComponent(
+        position: pos,
       ),
     );
   }
@@ -316,12 +357,31 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
   void spawnStaticInteractablesForCurrentMap() {
     worldMap.children.whereType<ChestComponent>().forEach((c) => c.removeFromParent());
     worldMap.children.whereType<AltarComponent>().forEach((c) => c.removeFromParent());
+    worldMap.children.whereType<KeyComponent>().forEach((c) => c.removeFromParent());
+    worldMap.children.whereType<PortalComponent>().forEach((c) => c.removeFromParent());
+    _portal = null;
 
     final mapRng = Random(mapSeedForIndex(mapIndex));
     final used = <Vector2>[];
     final avoidPoint = player?.position ?? (worldMap.mapSize / 2);
 
-    const chestCount = 100;
+    final portalPos =
+        _findFreeInteractablePoint(mapRng, used, avoidPoint) ?? _randomPointOnMap(mapRng);
+    used.add(portalPos);
+    final portal = PortalComponent(position: portalPos);
+    portal.setLocked(keysFound.value < requiredKeys);
+    _portal = portal;
+    worldMap.add(portal);
+
+    const keyCount = 2;
+    for (var i = 0; i < keyCount; i++) {
+      final keyPos =
+          _findFreeInteractablePoint(mapRng, used, avoidPoint) ?? _randomPointOnMap(mapRng);
+      used.add(keyPos);
+      worldMap.add(KeyComponent(position: keyPos));
+    }
+
+    const chestCount = 7;
     for (var i = 0; i < chestCount; i++) {
       final pos = _findFreeInteractablePoint(mapRng, used, avoidPoint);
       if (pos == null) continue;
@@ -335,7 +395,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
       );
     }
 
-    const altarCount = 100;
+    const altarCount = 5;
     for (var i = 0; i < altarCount; i++) {
       final pos = _findFreeInteractablePoint(mapRng, used, avoidPoint);
       if (pos == null) continue;
@@ -386,6 +446,91 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     return null;
   }
 
+  void onKeyCollected() {
+    if (keysFound.value >= requiredKeys) return;
+    keysFound.value += 1;
+    showAnnouncement(l10n.t('key_collected'), seconds: 1.4);
+
+    if (keysFound.value >= requiredKeys) {
+      _portal?.setLocked(false);
+      showAnnouncement(l10n.t('portal_unlocked'), seconds: 2.2);
+    }
+  }
+
+  void onPortalCaptured() {
+    if (_finalBossSpawned) return;
+    _finalBossSpawned = true;
+    showAnnouncement(l10n.t('final_boss_spawned'), seconds: 2.6);
+    _spawnFinalBoss();
+  }
+
+  void onPortalEntered() {
+    if (_portalTransitionInProgress || !_finalBossDefeated) return;
+    _portalTransitionInProgress = true;
+    _advanceToNextMap();
+    _portalTransitionInProgress = false;
+  }
+
+  void onEnemyKilled(EnemyComponent enemy) {
+    if (enemy is SkeletonBossComponent && !_mainBossKeyDropped) {
+      _mainBossKeyDropped = true;
+      _spawnBossKey(enemy.position);
+      showAnnouncement(l10n.t('boss_key_drop'), seconds: 2.0);
+    }
+
+    if (enemy is FinalBossComponent && !_finalBossDefeated) {
+      _finalBossDefeated = true;
+      _portal?.setOpen(true);
+      showAnnouncement(l10n.t('portal_open'), seconds: 2.2);
+    }
+  }
+
+  void _spawnBossKey(Vector2 pos) {
+    final dropPos = worldMap.clampToMap(pos + Vector2(32, 0));
+    worldMap.add(
+      KeyComponent(
+        position: dropPos,
+        pickupTime: 0.6,
+        interactRadius: 64,
+      ),
+    );
+  }
+
+  void _advanceToNextMap() {
+    mapIndex += 1;
+    keysFound.value = 0;
+    _bossSpawned = false;
+    _bossWarned = false;
+    _mainBossKeyDropped = false;
+    _finalBossSpawned = false;
+    _finalBossDefeated = false;
+    _swarmSpawned = false;
+    _swarmWarned = false;
+    _portal = null;
+
+    clearBossHud();
+    _announcementTimer?.cancel();
+    _announcementTimer = null;
+    announcementText.value = '';
+
+    worldMap.children.whereType<EnemyComponent>().forEach((c) => c.removeFromParent());
+    worldMap.children.whereType<ChestComponent>().forEach((c) => c.removeFromParent());
+    worldMap.children.whereType<AltarComponent>().forEach((c) => c.removeFromParent());
+    worldMap.children.whereType<KeyComponent>().forEach((c) => c.removeFromParent());
+    worldMap.children.whereType<PortalComponent>().forEach((c) => c.removeFromParent());
+
+    final p = player;
+    if (p != null) {
+      p.position = worldMap.mapSize / 2;
+    }
+
+    biomeTimer.resetAndStart();
+    enemySpawner.isPaused = false;
+
+    spawnStaticInteractablesForCurrentMap();
+    showAnnouncement(l10n.t('map_next'), seconds: 2.0);
+  }
+
   // ===== rewards entrypoints =====
 
   Future<void> onChestOpened() async {
@@ -399,6 +544,65 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
   /// Отдельный оверлей для награды босса.
   void showBossReward() {
     _enqueueRewardOverlay(RewardSource.boss);
+  }
+
+  Future<List<RewardDefinition>> _rollRewardsWithGuarantees({
+    required RewardSource source,
+    required int count,
+    required double luckBonus,
+    Set<String>? excludeIds,
+    Rarity? minRarity,
+  }) async {
+    final result = <RewardDefinition>[];
+    final localExcluded = <String>{};
+    if (excludeIds != null) {
+      localExcluded.addAll(excludeIds);
+    }
+    var remaining = count;
+
+    Future<List<RewardDefinition>> rollOnce({
+      required int rollCount,
+      RewardKind? requiredKind,
+      Rarity? requiredRarity,
+    }) async {
+      final rolled = await rewardRepository.roll(
+        source: source,
+        count: rollCount,
+        rng: rng,
+        l10n: l10n,
+        game: this,
+        build: buildState,
+        luckBonus: luckBonus,
+        excludeIds: localExcluded,
+        minRarity: requiredRarity == null ? minRarity : null,
+        requiredKind: requiredKind,
+        requiredRarity: requiredRarity,
+      );
+      for (final r in rolled) {
+        localExcluded.add(r.id);
+      }
+      result.addAll(rolled);
+      return rolled;
+    }
+
+    if (source != RewardSource.boss && _legendaryNoHitStreak >= 8 && remaining > 0) {
+      final forced = await rollOnce(rollCount: 1, requiredRarity: Rarity.legendary);
+      if (forced.isNotEmpty) remaining -= 1;
+    }
+
+    if (source == RewardSource.altar && _altarNoAbilityStreak >= 2 && remaining > 0) {
+      final alreadyHasAbility = result.any((r) => r.kind == RewardKind.ability);
+      if (!alreadyHasAbility) {
+        final forced = await rollOnce(rollCount: 1, requiredKind: RewardKind.ability);
+        if (forced.isNotEmpty) remaining -= 1;
+      }
+    }
+
+    if (remaining > 0) {
+      await rollOnce(rollCount: remaining);
+    }
+
+    return result;
   }
 
   /// Унифицированная точка показа наград.
@@ -415,14 +619,25 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     }
 
     final count = (source == RewardSource.chest || source == RewardSource.boss) ? 1 : 3;
-    final rolled = await rewardRepository.roll(
+    final luckBonus = switch (source) {
+      RewardSource.levelUp => runModifiers.luckBonusLevelUp,
+      RewardSource.altar => runModifiers.luckBonusAltar,
+      _ => 0.0,
+    };
+
+    final excludeIds = switch (source) {
+      RewardSource.chest => _chestSeenRewardIds,
+      RewardSource.boss => _bossSeenRewardIds,
+      _ => null,
+    };
+    final minRarity = source == RewardSource.chest && _chestCommonStreak >= 4 ? Rarity.rare : null;
+
+    final rolled = await _rollRewardsWithGuarantees(
       source: source,
       count: count,
-      rng: rng,
-      l10n: l10n,
-      game: this,
-      build: buildState,
-      luckBonus: runModifiers.luckBonus,
+      luckBonus: luckBonus,
+      excludeIds: excludeIds,
+      minRarity: minRarity,
     );
 
     // Если наград нет, закрываем цикл и идем дальше.
@@ -431,7 +646,37 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
       return;
     }
 
+    if (source == RewardSource.chest) {
+      for (final reward in rolled) {
+        _chestSeenRewardIds.add(reward.id);
+      }
+      if (rolled.first.rarity == Rarity.common) {
+        _chestCommonStreak += 1;
+      } else {
+        _chestCommonStreak = 0;
+      }
+    }
+
+    if (source == RewardSource.altar) {
+      final hasAbility = rolled.any((r) => r.kind == RewardKind.ability);
+      if (hasAbility) {
+        _altarNoAbilityStreak = 0;
+      } else {
+        _altarNoAbilityStreak += 1;
+      }
+    }
+
+    final hasLegendary = rolled.any((r) => r.rarity == Rarity.legendary);
+    if (hasLegendary) {
+      _legendaryNoHitStreak = 0;
+    } else {
+      _legendaryNoHitStreak += 1;
+    }
+
     if (source == RewardSource.boss) {
+      for (final reward in rolled) {
+        _bossSeenRewardIds.add(reward.id);
+      }
       bossRewardChoice.value = rolled.first;
       if (!overlays.isActive(Overlays.bossReward)) {
         overlays.add(Overlays.bossReward);
@@ -502,6 +747,23 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
         t > GameConstants.bossSpawnTimeLeftSeconds) {
       _bossWarned = true;
       showAnnouncement(l10n.t('boss_warning'), seconds: GameConstants.bossWarningLeadSeconds);
+    }
+
+    if (!_swarmWarned &&
+        t <= GameConstants.swarmTimeLeftSeconds + GameConstants.swarmWarningLeadSeconds &&
+        t > GameConstants.swarmTimeLeftSeconds) {
+      _swarmWarned = true;
+      showAnnouncement(l10n.t('swarm_warning'), seconds: GameConstants.swarmWarningLeadSeconds);
+    }
+
+    if (!_swarmSpawned && t <= GameConstants.swarmTimeLeftSeconds) {
+      _swarmSpawned = true;
+      final count = GameConstants.swarmSpawnBaseCount +
+          (threatSystem.level * GameConstants.swarmSpawnThreatBonus);
+      enemySpawner.spawnSwarm(
+        count: count,
+        eliteChanceBonus: GameConstants.swarmEliteChanceBonus,
+      );
     }
 
     if (_bossSpawned) return;

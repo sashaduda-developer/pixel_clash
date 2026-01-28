@@ -14,7 +14,8 @@ class RunModifiers {
   double enemySpawnRateAdd = 0.0;
 
   /// Удача: влияет на шансы редкости наград.
-  double luckBonusAdd = 0.0;
+  double luckBonusLevelUpAdd = 0.0;
+  double luckBonusAltarAdd = 0.0;
 
   /// Множитель получаемого XP.
   double xpGainAdd = 0.0;
@@ -27,11 +28,15 @@ class RunModifiers {
   double eliteScoreMultiplier = 1.0;
   double eliteXpMultiplier = 1.0;
 
+  /// Множитель урона по боссам (игроком).
+  double bossDamageMultiplier = 1.0;
+
   /// Итоговый множитель частоты спавна врагов.
   /// Всегда минимум 1.0.
   double get enemySpawnRateMultiplier => (1.0 + enemySpawnRateAdd).clamp(1.0, 10.0);
 
-  double get luckBonus => luckBonusAdd.clamp(0.0, 1.0);
+  double get luckBonusLevelUp => luckBonusLevelUpAdd.clamp(0.0, 1.0);
+  double get luckBonusAltar => luckBonusAltarAdd.clamp(0.0, 1.0);
 
   double get xpGainMultiplier => (1.0 + xpGainAdd).clamp(0.1, 5.0);
 
@@ -41,12 +46,14 @@ class RunModifiers {
   /// Сброс модификаторов при старте нового рана.
   void reset() {
     enemySpawnRateAdd = 0.0;
-    luckBonusAdd = 0.0;
+    luckBonusLevelUpAdd = 0.0;
+    luckBonusAltarAdd = 0.0;
     xpGainAdd = 0.0;
     eliteChanceAdd = 0.0;
     eliteHpMultiplier = 1.0;
     eliteDmgMultiplier = 1.0;
     eliteScoreMultiplier = 1.0;
     eliteXpMultiplier = 1.0;
+    bossDamageMultiplier = 1.0;
   }
 }

@@ -2,8 +2,14 @@ export 'package:pixel_clash/game/components/combat/buffs/altar/bleed_on_hit_buff
 export 'package:pixel_clash/game/components/combat/buffs/altar/freeze_aura_buff.dart';
 export 'package:pixel_clash/game/components/combat/buffs/altar/frost_ring_ability.dart';
 export 'package:pixel_clash/game/components/combat/buffs/altar/ignite_on_hit_buff.dart';
+export 'package:pixel_clash/game/components/combat/buffs/altar/knight_crushing_stun_buff.dart';
+export 'package:pixel_clash/game/components/combat/buffs/altar/knight_wave_pierce_buff.dart';
 export 'package:pixel_clash/game/components/combat/buffs/altar/level_based_buff.dart';
+export 'package:pixel_clash/game/components/combat/buffs/altar/mage_fire_sphere_buff.dart';
+export 'package:pixel_clash/game/components/combat/buffs/altar/mage_mana_surge_buff.dart';
 export 'package:pixel_clash/game/components/combat/buffs/altar/nova_burst_buff.dart';
+export 'package:pixel_clash/game/components/combat/buffs/altar/ninja_evasion_strike_buff.dart';
+export 'package:pixel_clash/game/components/combat/buffs/altar/ninja_triple_strike_buff.dart';
 export 'package:pixel_clash/game/components/combat/buffs/altar/piercing_projectiles_buff.dart';
 export 'package:pixel_clash/game/components/combat/buffs/altar/poison_cloud_buff.dart';
 export 'package:pixel_clash/game/components/combat/buffs/altar/reaper_mark_buff.dart';

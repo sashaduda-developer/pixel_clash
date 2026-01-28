@@ -15,7 +15,10 @@ class RewardSeeder {
   /// - у скилла есть maxLevel (обычно 2)
   /// - повторный выбор = повышение level
   /// - после maxLevel скилл будет исключаться из пула ролла (сделаем на шаге 3)
-  static const int currentVersion = 4;
+  ///
+  /// v5: принудительное обновление пула наград (книги в сундуках).
+  /// v6: новые предметы сундука.
+  static const int currentVersion = 7;
 
   static Future<void> ensureSeeded(AppDatabase db) async {
     // ===== Само-ремонт данных =====
@@ -140,6 +143,18 @@ class RewardSeeder {
         epic: 1.2,
         legendary: 1.6,
       ),
+      ..._statVariants(
+        source: 'levelUp',
+        id: 'stat_hpRegen',
+        titleKey: 'upg_hp_regen_title',
+        descKey: 'upg_hp_regen_desc',
+        stat: 'hpRegen',
+        iconKey: 'stat',
+        common: 0.15,
+        rare: 0.30,
+        epic: 0.45,
+        legendary: 0.70,
+      ),
 
       // ===========================
       // CHEST — предметы
@@ -165,34 +180,22 @@ class RewardSeeder {
         common: {
           'spawnRateAdd': 0.20,
           'eliteChanceAdd': 0.06,
-          'eliteHpMult': 1.35,
-          'eliteDmgMult': 1.20,
           'eliteScoreMult': 1.30,
-          'eliteXpMult': 1.20,
         },
         rare: {
           'spawnRateAdd': 0.30,
           'eliteChanceAdd': 0.09,
-          'eliteHpMult': 1.45,
-          'eliteDmgMult': 1.30,
           'eliteScoreMult': 1.50,
-          'eliteXpMult': 1.35,
         },
         epic: {
           'spawnRateAdd': 0.40,
           'eliteChanceAdd': 0.12,
-          'eliteHpMult': 1.60,
-          'eliteDmgMult': 1.45,
           'eliteScoreMult': 1.70,
-          'eliteXpMult': 1.50,
         },
         legendary: {
           'spawnRateAdd': 0.55,
           'eliteChanceAdd': 0.16,
-          'eliteHpMult': 1.80,
-          'eliteDmgMult': 1.60,
           'eliteScoreMult': 2.00,
-          'eliteXpMult': 1.70,
         },
       ),
       ..._itemVariantsMap(
@@ -216,6 +219,61 @@ class RewardSeeder {
         rare: {'xpGainMult': 0.35, 'damageDelta': -2},
         epic: {'xpGainMult': 0.50, 'damageDelta': -3},
         legendary: {'xpGainMult': 0.70, 'damageDelta': -5},
+      ),
+      ..._itemVariantsMap(
+        source: 'chest',
+        id: 'item_ring_necromancer',
+        titleKey: 'chest_ring_necromancer_title',
+        descKey: 'chest_ring_necromancer_desc',
+        iconKey: 'ring',
+        common: {'lifestealAdd': 0.04, 'maxHpPct': 0.08},
+        rare: {'lifestealAdd': 0.06, 'maxHpPct': 0.12},
+        epic: {'lifestealAdd': 0.08, 'maxHpPct': 0.16},
+        legendary: {'lifestealAdd': 0.10, 'maxHpPct': 0.22},
+      ),
+      ..._itemVariantsMap(
+        source: 'chest',
+        id: 'item_mask_hunter',
+        titleKey: 'chest_mask_hunter_title',
+        descKey: 'chest_mask_hunter_desc',
+        iconKey: 'mask',
+        common: {'critChanceAdd': 0.03, 'bossDamageMult': 0.90},
+        rare: {'critChanceAdd': 0.05, 'bossDamageMult': 0.85},
+        epic: {'critChanceAdd': 0.07, 'bossDamageMult': 0.80},
+        legendary: {'critChanceAdd': 0.10, 'bossDamageMult': 0.72},
+      ),
+      ..._itemVariantsMap(
+        source: 'chest',
+        id: 'item_boots_panic',
+        titleKey: 'chest_boots_panic_title',
+        descKey: 'chest_boots_panic_desc',
+        iconKey: 'boots',
+        common: {'moveSpeedPct': 0.10, 'armorPct': 0.20},
+        rare: {'moveSpeedPct': 0.14, 'armorPct': 0.30},
+        epic: {'moveSpeedPct': 0.18, 'armorPct': 0.40},
+        legendary: {'moveSpeedPct': 0.24, 'armorPct': 0.50},
+      ),
+      ..._itemVariantsMap(
+        source: 'chest',
+        id: 'item_amulet_mercury',
+        titleKey: 'chest_amulet_mercury_title',
+        descKey: 'chest_amulet_mercury_desc',
+        iconKey: 'amulet',
+        common: {'attackSpeedPct': 0.10, 'maxManaPct': 0.15},
+        rare: {'attackSpeedPct': 0.15, 'maxManaPct': 0.22},
+        epic: {'attackSpeedPct': 0.20, 'maxManaPct': 0.30},
+        legendary: {'attackSpeedPct': 0.26, 'maxManaPct': 0.40},
+      ),
+      ..._itemVariantsMap(
+        source: 'chest',
+        id: 'item_pain_mirror',
+        titleKey: 'chest_pain_mirror_title',
+        descKey: 'chest_pain_mirror_desc',
+        iconKey: 'mirror',
+        common: {'reflectPct': 0.10, 'healMultiplier': 0.85},
+        rare: {'reflectPct': 0.14, 'healMultiplier': 0.78},
+        epic: {'reflectPct': 0.18, 'healMultiplier': 0.70},
+        legendary: {'reflectPct': 0.24, 'healMultiplier': 0.60},
       ),
 
       // ===========================
@@ -366,6 +424,7 @@ class RewardSeeder {
         titleKey: 'altar_piercing_title',
         descKey: 'altar_piercing_desc',
         iconKey: 'stat',
+        hero: 'ranger',
         maxLevel: 2,
         trigger: {
           'kind': 'passive',
@@ -391,6 +450,7 @@ class RewardSeeder {
         titleKey: 'altar_ricochet_title',
         descKey: 'altar_ricochet_desc',
         iconKey: 'stat',
+        hero: 'ranger',
         maxLevel: 2,
         trigger: {
           'kind': 'passive',
@@ -434,6 +494,163 @@ class RewardSeeder {
           },
         ],
       ),
+      _altarSkillRow(
+        id: 'buff_mage_fire_sphere',
+        rarity: 'rare',
+        kind: 'buff',
+        titleKey: 'altar_mage_fire_sphere_title',
+        descKey: 'altar_mage_fire_sphere_desc',
+        iconKey: 'bolt',
+        hero: 'mage',
+        maxLevel: 2,
+        trigger: {
+          'kind': 'onHit',
+          'event': 'DamageDealtEvent',
+          'cooldownSec': 0.0,
+          'procChance': 0.0,
+        },
+        levels: [
+          {
+            'level': 1,
+            'values': {'radius': 1.6, 'damagePctOfHit': 0.30},
+          },
+          {
+            'level': 2,
+            'values': {'radius': 2.0, 'damagePctOfHit': 0.40},
+          },
+        ],
+      ),
+      _altarSkillRow(
+        id: 'buff_mage_mana_surge',
+        rarity: 'rare',
+        kind: 'buff',
+        titleKey: 'altar_mage_mana_surge_title',
+        descKey: 'altar_mage_mana_surge_desc',
+        iconKey: 'stat',
+        hero: 'mage',
+        maxLevel: 2,
+        trigger: {
+          'kind': 'passive',
+          'event': null,
+          'cooldownSec': 0.0,
+          'procChance': 0.0,
+        },
+        levels: [
+          {
+            'level': 1,
+            'values': {'damageMultiplier': 1.15, 'manaCost': 3.0},
+          },
+          {
+            'level': 2,
+            'values': {'damageMultiplier': 1.25, 'manaCost': 5.0},
+          },
+        ],
+      ),
+      _altarSkillRow(
+        id: 'buff_ninja_triple_strike',
+        rarity: 'rare',
+        kind: 'buff',
+        titleKey: 'altar_ninja_triple_strike_title',
+        descKey: 'altar_ninja_triple_strike_desc',
+        iconKey: 'stat',
+        hero: 'ninja',
+        maxLevel: 2,
+        trigger: {
+          'kind': 'passive',
+          'event': null,
+          'cooldownSec': 0.0,
+          'procChance': 0.0,
+        },
+        levels: [
+          {
+            'level': 1,
+            'values': {'thirdHitChance': 0.40, 'thirdHitDamageMultiplier': 0.70},
+          },
+          {
+            'level': 2,
+            'values': {'thirdHitChance': 0.70, 'thirdHitDamageMultiplier': 0.90},
+          },
+        ],
+      ),
+      _altarSkillRow(
+        id: 'buff_ninja_evasion_strike',
+        rarity: 'rare',
+        kind: 'buff',
+        titleKey: 'altar_ninja_evasion_strike_title',
+        descKey: 'altar_ninja_evasion_strike_desc',
+        iconKey: 'stat',
+        hero: 'ninja',
+        maxLevel: 2,
+        trigger: {
+          'kind': 'passive',
+          'event': null,
+          'cooldownSec': 0.0,
+          'procChance': 0.0,
+        },
+        levels: [
+          {
+            'level': 1,
+            'values': {'critBonusMultiplier': 0.30},
+          },
+          {
+            'level': 2,
+            'values': {'critBonusMultiplier': 0.60},
+          },
+        ],
+      ),
+      _altarSkillRow(
+        id: 'buff_knight_wave_pierce',
+        rarity: 'rare',
+        kind: 'buff',
+        titleKey: 'altar_knight_wave_pierce_title',
+        descKey: 'altar_knight_wave_pierce_desc',
+        iconKey: 'stat',
+        hero: 'knight',
+        maxLevel: 2,
+        trigger: {
+          'kind': 'passive',
+          'event': null,
+          'cooldownSec': 0.0,
+          'procChance': 0.0,
+        },
+        levels: [
+          {
+            'level': 1,
+            'values': {'pierceCount': 1},
+          },
+          {
+            'level': 2,
+            'values': {'pierceCount': 2},
+          },
+        ],
+      ),
+      _altarSkillRow(
+        id: 'buff_knight_crushing_stun',
+        rarity: 'rare',
+        kind: 'buff',
+        titleKey: 'altar_knight_crushing_stun_title',
+        descKey: 'altar_knight_crushing_stun_desc',
+        iconKey: 'shield',
+        hero: 'knight',
+        maxLevel: 2,
+        trigger: {
+          'kind': 'onHit',
+          'event': 'DamageDealtEvent',
+          'cooldownSec': 0.0,
+          'procChance': 0.0,
+        },
+        levels: [
+          {
+            'level': 1,
+            'values': {'hitsToStun': 5, 'stunSec': 0.6},
+          },
+          {
+            'level': 2,
+            'values': {'hitsToStun': 4, 'stunSec': 0.8},
+          },
+        ],
+      ),
+
       _altarSkillRow(
         id: 'buff_soul_on_kill',
         rarity: 'rare',
@@ -1015,6 +1232,7 @@ class RewardSeeder {
     required Map<String, Object?> trigger,
     required List<Map<String, Object?>> levels,
     Map<String, Object?> legacy = const <String, Object?>{},
+    String? hero,
     double weight = 1,
   }) {
     // Единый формат paramsJson для алтарей.
@@ -1023,6 +1241,10 @@ class RewardSeeder {
       'trigger': trigger,
       'levels': levels,
     };
+
+    if (hero != null) {
+      params['hero'] = hero;
+    }
 
     // Если есть обратная совместимость — добавляем плоские ключи.
     // Например: lifesteal / procChance.

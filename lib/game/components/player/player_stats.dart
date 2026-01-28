@@ -12,14 +12,18 @@ class PlayerStats {
     required this.moveSpeed,
     required this.maxMana,
     required this.mana,
-    this.manaRegen = 6.0,
+    this.manaRegen = 2.0,
+    this.hpRegen = 0.0,
     this.evasionChance = 0.0,
     this.critChance = 0.15,
     this.critMultiplier = 1.8,
+    this.healMultiplier = 1.0,
   });
 
   int maxHp;
   int hp;
+
+  double _hpRegenCarry = 0.0;
 
   int armor;
   int damage;
@@ -33,6 +37,7 @@ class PlayerStats {
   double maxMana;
   double mana;
   double manaRegen;
+  double hpRegen;
   double evasionChance;
 
   /// Шанс критического удара (0..1).
@@ -40,6 +45,9 @@ class PlayerStats {
 
   /// Множитель критического удара (например 1.8 = +80% урона).
   double critMultiplier;
+
+  /// Множитель получаемого лечения.
+  double healMultiplier;
 
   factory PlayerStats.forHero(HeroType type) {
     switch (type) {
@@ -53,7 +61,8 @@ class PlayerStats {
           moveSpeed: 190,
           maxMana: 100,
           mana: 100,
-          manaRegen: 7.0,
+          manaRegen: 2.2,
+          hpRegen: 0.0,
           evasionChance: 0.0,
           critChance: 0.15,
           critMultiplier: 1.8,
@@ -68,7 +77,8 @@ class PlayerStats {
           moveSpeed: 165,
           maxMana: 90,
           mana: 90,
-          manaRegen: 6.0,
+          manaRegen: 2.5,
+          hpRegen: 0.0,
           evasionChance: 0.0,
           critChance: 0.15,
           critMultiplier: 1.8,
@@ -83,7 +93,8 @@ class PlayerStats {
           moveSpeed: 175,
           maxMana: 140,
           mana: 140,
-          manaRegen: 8.5,
+          manaRegen: 2.0,
+          hpRegen: 0.0,
           evasionChance: 0.0,
           critChance: 0.12,
           critMultiplier: 1.7,
@@ -98,7 +109,8 @@ class PlayerStats {
           moveSpeed: 215,
           maxMana: 80,
           mana: 80,
-          manaRegen: 6.5,
+          manaRegen: 2.4,
+          hpRegen: 0.0,
           evasionChance: 0.10,
           critChance: 0.18,
           critMultiplier: 1.7,
@@ -109,9 +121,27 @@ class PlayerStats {
   /// Лечение (не выше maxHp).
   void heal(int value) {
     if (value <= 0) return;
-    hp = (hp + value).clamp(0, maxHp);
+    final mult = healMultiplier.clamp(0.0, 10.0);
+    final effective = (value * mult).round();
+    if (effective <= 0) return;
+    hp = (hp + effective).clamp(0, maxHp);
   }
 
+
+  bool regenHp(double dt) {
+    if (hpRegen <= 0) return false;
+    if (hp <= 0) return false;
+    if (hp >= maxHp) return false;
+
+    final gain = hpRegen * dt * healMultiplier;
+    _hpRegenCarry += gain;
+    final add = _hpRegenCarry.floor();
+    if (add <= 0) return false;
+
+    _hpRegenCarry -= add;
+    hp = (hp + add).clamp(0, maxHp);
+    return true;
+  }
   bool regenMana(double dt) {
     if (manaRegen <= 0 || maxMana <= 0) return false;
     if (mana >= maxMana) return false;

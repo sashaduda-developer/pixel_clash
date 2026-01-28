@@ -46,6 +46,7 @@ class PlayerComponent extends PositionComponent
   static const double _flashDuration = 0.08;
 
   double _attackTimer = 0;
+  bool _forceCritNext = false;
   @override
   Future<void> onLoad() async {
     await super.onLoad();
@@ -85,7 +86,7 @@ class PlayerComponent extends PositionComponent
 
     // Апдейт баффов после перемещения и атаки.
     buffs.update(dt);
-    _updateMana(dt);
+    _updateRegen(dt);
   }
 
   void _autoAttack() {
@@ -107,10 +108,18 @@ class PlayerComponent extends PositionComponent
 
   /// Роллим урон и флаг крита.
   (int, bool) _rollDamage() {
+    final base = stats.damage;
+
+    if (_forceCritNext) {
+      _forceCritNext = false;
+      final evasionBuff = buffs.getBuffAs<NinjaEvasionStrikeBuff>('buff_ninja_evasion_strike');
+      final bonus = evasionBuff?.critBonusMultiplier ?? 0.0;
+      final dmg = (base * (stats.critMultiplier + bonus)).round();
+      return (dmg, true);
+    }
+
     final r = game.rng.nextDouble();
     final isCrit = r < stats.critChance;
-
-    final base = stats.damage;
     final dmg = isCrit ? (base * stats.critMultiplier).round() : base;
 
     return (dmg, isCrit);
@@ -179,7 +188,15 @@ class PlayerComponent extends PositionComponent
     final dir = (target.position - position);
     if (dir.length2 <= 0.0001) return;
 
-    final (dmg, isCrit) = _rollDamage();
+    var (dmg, isCrit) = _rollDamage();
+    final manaBuff = buffs.getBuffAs<MageManaSurgeBuff>('buff_mage_mana_surge');
+    if (manaBuff != null) {
+      final cost = manaBuff.manaCost;
+      if (cost > 0 && !stats.spendMana(cost)) return;
+      if (cost > 0) game.notifyPlayerStatsChanged();
+
+      dmg = (dmg * manaBuff.damageMultiplier).round().clamp(1, 999999);
+    }
 
     _shootProjectile(
       direction: dir,
@@ -213,6 +230,8 @@ class PlayerComponent extends PositionComponent
     if (dir.length2 <= 0.0001) return;
 
     final waveDamage = (dmg * attackProfile.waveDamageMultiplier).round().clamp(1, 999999);
+    final waveBuff = buffs.getBuffAs<KnightWavePierceBuff>('buff_knight_wave_pierce');
+    final wavePierce = waveBuff?.pierceCount ?? 0;
     _shootProjectile(
       direction: dir,
       damage: waveDamage,
@@ -221,6 +240,8 @@ class PlayerComponent extends PositionComponent
       color: attackProfile.projectileColor,
       size: attackProfile.projectileSize,
       sourceType: DamageSourceType.melee,
+      pierceOverride: wavePierce,
+      ricochetOverride: 0,
     );
   }
 
@@ -290,8 +311,14 @@ class PlayerComponent extends PositionComponent
     required Size size,
     required DamageSourceType sourceType,
     ProjectileVisual visual = ProjectileVisual.bolt,
+    int? pierceOverride,
+    int? ricochetOverride,
+    double? ricochetMultiplierOverride,
   }) {
     final (pierceCount, ricochetBounces, ricochetMultiplier) = _projectileModifiers();
+    final finalPierce = pierceOverride ?? pierceCount;
+    final finalRicochet = ricochetOverride ?? ricochetBounces;
+    final finalRicochetMult = ricochetMultiplierOverride ?? ricochetMultiplier;
 
     final proj = ProjectileArrow(
       owner: this,
@@ -304,9 +331,9 @@ class PlayerComponent extends PositionComponent
       paintColor: color,
       sizeOverride: Vector2(size.width, size.height),
       visual: visual,
-      pierceCount: pierceCount,
-      ricochetBounces: ricochetBounces,
-      ricochetDamageMultiplier: ricochetMultiplier,
+      pierceCount: finalPierce,
+      ricochetBounces: finalRicochet,
+      ricochetDamageMultiplier: finalRicochetMult,
     );
 
     game.worldMap.add(proj);
@@ -323,12 +350,19 @@ class PlayerComponent extends PositionComponent
     return (pierceCount, ricochetBounces, ricochetMultiplier);
   }
 
-  void _updateMana(double dt) {
+
+  void _updateRegen(double dt) {
+    var changed = false;
     if (stats.regenMana(dt)) {
+      changed = true;
+    }
+    if (stats.regenHp(dt)) {
+      changed = true;
+    }
+    if (changed) {
       game.notifyPlayerStatsChanged();
     }
   }
-
   @override
   void render(Canvas canvas) {
     super.render(canvas);
@@ -361,6 +395,10 @@ class PlayerComponent extends PositionComponent
     // Шанс уклониться от удара.
     final evade = stats.evasionChance.clamp(0.0, 0.80);
     if (evade > 0 && game.rng.nextDouble() < evade) {
+      final evadeBuff = buffs.getBuffAs<NinjaEvasionStrikeBuff>('buff_ninja_evasion_strike');
+      if (evadeBuff != null) {
+        _forceCritNext = true;
+      }
       // Визуальный фидбек уклонения.
       game.worldMap.add(
         DamageNumberComponent(
