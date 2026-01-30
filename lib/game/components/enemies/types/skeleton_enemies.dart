@@ -16,6 +16,21 @@ const AnimatedEnemyConfig _skeletonConfig = AnimatedEnemyConfig(
   attackStepTime: 0.07,
 );
 
+const AnimatedEnemyConfig _skeletonEliteConfig = AnimatedEnemyConfig(
+  basePath: 'enemies/Skeleton-Elite/',
+  idleFile: 'Skeleton-Elite-Idle.png',
+  walkFile: 'Skeleton-Elite-Walk.png',
+  attackFile: 'Skeleton-Elite-Attack.png',
+  hurtFile: 'Skeleton-Elite-Hurt.png',
+  deathFile: 'Skeleton-Elite-Death.png',
+  idleFrames: 6,
+  walkFrames: 8,
+  attackFrames: 6,
+  hurtFrames: 4,
+  deathFrames: 4,
+  attackStepTime: 0.07,
+);
+
 const AnimatedEnemyConfig _armoredSkeletonConfig = AnimatedEnemyConfig(
   basePath: 'enemies/Armored-Skeleton/',
   idleFile: 'Armored Skeleton-Idle.png',
@@ -32,6 +47,22 @@ const AnimatedEnemyConfig _armoredSkeletonConfig = AnimatedEnemyConfig(
   attackDelaySec: 0.16,
 );
 
+const AnimatedEnemyConfig _armoredSkeletonEliteConfig = AnimatedEnemyConfig(
+  basePath: 'enemies/Armored-Skeleton-Elite/',
+  idleFile: 'Armored-Skeleton-Elite-Idle.png',
+  walkFile: 'Armored-Skeleton-Elite-Walk.png',
+  attackFile: 'Armored-Skeleton-Elite-Attack.png',
+  hurtFile: 'Armored-Skeleton-Elite-Hurt.png',
+  deathFile: 'Armored-Skeleton-Elite-Death.png',
+  idleFrames: 6,
+  walkFrames: 8,
+  attackFrames: 8,
+  hurtFrames: 4,
+  deathFrames: 4,
+  attackStepTime: 0.08,
+  attackDelaySec: 0.16,
+);
+
 const AnimatedEnemyConfig _greatswordSkeletonConfig = AnimatedEnemyConfig(
   basePath: 'enemies/Greatsword-Skeleton/',
   idleFile: 'Greatsword Skeleton-Idle.png',
@@ -39,6 +70,22 @@ const AnimatedEnemyConfig _greatswordSkeletonConfig = AnimatedEnemyConfig(
   attackFile: 'Greatsword Skeleton-Attack.png',
   hurtFile: 'Greatsword Skeleton-Hurt.png',
   deathFile: 'Greatsword Skeleton-Death.png',
+  idleFrames: 6,
+  walkFrames: 9,
+  attackFrames: 8,
+  hurtFrames: 4,
+  deathFrames: 4,
+  attackStepTime: 0.09,
+  attackDelaySec: 0.22,
+);
+
+const AnimatedEnemyConfig _greatswordSkeletonEliteConfig = AnimatedEnemyConfig(
+  basePath: 'enemies/Greatsword-Skeleton-Elite/',
+  idleFile: 'Greatsword-Skeleton-Elite-Idle.png',
+  walkFile: 'Greatsword-Skeleton-Elite-Walk.png',
+  attackFile: 'Greatsword-Skeleton-Elite-Attack.png',
+  hurtFile: 'Greatsword-Skeleton-Elite-Hurt.png',
+  deathFile: 'Greatsword-Skeleton-Elite-Death.png',
   idleFrames: 6,
   walkFrames: 9,
   attackFrames: 8,
@@ -74,7 +121,7 @@ class SkeletonEnemyComponent extends AnimatedEnemyComponent {
   double get hitboxRadius => 13;
 }
 
-class SkeletonEliteEnemyComponent extends SkeletonEnemyComponent {
+class SkeletonEliteEnemyComponent extends AnimatedEnemyComponent {
   SkeletonEliteEnemyComponent({
     required super.position,
     required super.speed,
@@ -82,7 +129,7 @@ class SkeletonEliteEnemyComponent extends SkeletonEnemyComponent {
     required super.damage,
     required super.scoreReward,
     required super.xpReward,
-  });
+  }) : super(config: _skeletonEliteConfig);
 
   @override
   Color get baseColor => const Color(0xFFFFD54F);
@@ -117,7 +164,8 @@ class ArmoredSkeletonEnemyComponent extends AnimatedEnemyComponent {
     required super.damage,
     required super.scoreReward,
     required super.xpReward,
-  }) : super(config: _armoredSkeletonConfig);
+    AnimatedEnemyConfig config = _armoredSkeletonConfig,
+  }) : super(config: config);
 
   @override
   Color get baseColor => const Color(0xFF9E9E9E);
@@ -143,7 +191,7 @@ class ArmoredSkeletonEliteEnemyComponent extends ArmoredSkeletonEnemyComponent {
     required super.damage,
     required super.scoreReward,
     required super.xpReward,
-  });
+  }) : super(config: _armoredSkeletonEliteConfig);
 
   @override
   Color get baseColor => const Color(0xFFFFD54F);
@@ -178,7 +226,8 @@ class GreatswordSkeletonEnemyComponent extends AnimatedEnemyComponent {
     required super.damage,
     required super.scoreReward,
     required super.xpReward,
-  }) : super(config: _greatswordSkeletonConfig);
+    AnimatedEnemyConfig config = _greatswordSkeletonConfig,
+  }) : super(config: config);
 
   @override
   Color get baseColor => const Color(0xFF8D8D8D);
@@ -204,7 +253,7 @@ class GreatswordSkeletonEliteEnemyComponent extends GreatswordSkeletonEnemyCompo
     required super.damage,
     required super.scoreReward,
     required super.xpReward,
-  });
+  }) : super(config: _greatswordSkeletonEliteConfig);
 
   @override
   Color get baseColor => const Color(0xFFFFD54F);

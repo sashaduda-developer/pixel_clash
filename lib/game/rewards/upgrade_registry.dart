@@ -8,7 +8,9 @@ import 'package:pixel_clash/game/components/combat/buffs/boss/storm_heart_buff.d
 import 'package:pixel_clash/game/components/combat/buffs/boss/time_crystal_buff.dart';
 import 'package:pixel_clash/game/components/combat/buffs/boss/titan_shield_buff.dart';
 import 'package:pixel_clash/game/components/combat/buffs/items/necromancer_ring_buff.dart';
+import 'package:pixel_clash/game/components/combat/buffs/items/messenger_heart_buff.dart';
 import 'package:pixel_clash/game/components/combat/buffs/items/pain_mirror_buff.dart';
+import 'package:pixel_clash/game/components/combat/buffs/items/void_mask_buff.dart';
 import 'package:pixel_clash/game/components/combat/buffs/vampirism_buff.dart';
 import 'package:pixel_clash/game/components/combat/rarity.dart';
 import 'package:pixel_clash/game/components/player/player_component.dart';
@@ -74,6 +76,10 @@ class UpgradeRegistry {
       'item_boots_panic': _applyPanicBoots,
       'item_amulet_mercury': _applyMercuryAmulet,
       'item_pain_mirror': _applyPainMirror,
+      'item_glass_blade': _applyGlassBlade,
+      'item_overheat_sphere': _applyOverheatSphere,
+      'item_mask_void': _applyVoidMask,
+      'item_heart_messenger': _applyMessengerHeart,
       // ===== boss unique =====
       'boss_phoenix_heart': _applyPhoenixHeart,
       'boss_time_crystal': _applyTimeCrystal,
@@ -794,6 +800,125 @@ class UpgradeRegistry {
     if (healMult is num) {
       final next = (p.stats.healMultiplier * healMult.toDouble()).clamp(0.1, 5.0);
       p.stats.healMultiplier = next;
+    }
+
+    game.notifyPlayerStatsChanged();
+  }
+
+  void _applyGlassBlade(
+    PixelClashGame game,
+    Map<String, Object?> params,
+    PlayerBuildState build,
+    Rarity rarity,
+  ) {
+    final p = game.player;
+    if (p == null) return;
+
+    final dmgDelta = params['damageDelta'];
+    if (dmgDelta is num) {
+      p.stats.damage = max(1, p.stats.damage + dmgDelta.round());
+    }
+
+    final crit = params['critChanceAdd'];
+    if (crit is num) {
+      p.stats.critChance = (p.stats.critChance + crit.toDouble()).clamp(0.0, 0.80);
+    }
+
+    final maxHpDelta = params['maxHpDelta'];
+    if (maxHpDelta is num) {
+      _applyMaxHpDelta(p, maxHpDelta.round());
+    }
+
+    game.notifyPlayerStatsChanged();
+  }
+
+  void _applyOverheatSphere(
+    PixelClashGame game,
+    Map<String, Object?> params,
+    PlayerBuildState build,
+    Rarity rarity,
+  ) {
+    final p = game.player;
+    if (p == null) return;
+
+    final atkPct = params['attackSpeedPct'];
+    if (atkPct is num) {
+      p.stats.attackSpeed *= (1.0 + atkPct.toDouble());
+    }
+
+    final dmgDelta = params['damageDelta'];
+    if (dmgDelta is num) {
+      p.stats.damage = max(1, p.stats.damage + dmgDelta.round());
+    }
+
+    final manaPct = params['maxManaPct'];
+    if (manaPct is num) {
+      _applyMaxManaPct(p, manaPct.toDouble());
+    }
+
+    final manaRegenDelta = params['manaRegenDelta'];
+    if (manaRegenDelta is num) {
+      p.stats.manaRegen += manaRegenDelta.toDouble();
+    }
+
+    game.notifyPlayerStatsChanged();
+  }
+
+  void _applyVoidMask(
+    PixelClashGame game,
+    Map<String, Object?> params,
+    PlayerBuildState build,
+    Rarity rarity,
+  ) {
+    final p = game.player;
+    if (p == null) return;
+
+    final procChance = params['voidProcChance'];
+    final duration = params['voidDurationSec'];
+    final cooldown = params['voidCooldownSec'];
+    if (procChance is num && duration is num && cooldown is num) {
+      p.buffs.addBuff(
+        VoidMaskBuff(
+          rarity: rarity,
+          procChance: procChance.toDouble(),
+          durationSec: duration.toDouble(),
+          cooldownSec: cooldown.toDouble(),
+        ),
+      );
+    }
+
+    final maxHpPct = params['maxHpPct'];
+    if (maxHpPct is num) {
+      _applyMaxHpPct(p, maxHpPct.toDouble());
+    }
+
+    game.notifyPlayerStatsChanged();
+  }
+
+  void _applyMessengerHeart(
+    PixelClashGame game,
+    Map<String, Object?> params,
+    PlayerBuildState build,
+    Rarity rarity,
+  ) {
+    final p = game.player;
+    if (p == null) return;
+
+    final speedPct = params['sprintSpeedPct'];
+    final duration = params['sprintDurationSec'];
+    if (speedPct is num && duration is num) {
+      p.buffs.addBuff(
+        MessengerHeartBuff(
+          rarity: rarity,
+          speedPct: speedPct.toDouble(),
+          durationSec: duration.toDouble(),
+        ),
+      );
+    }
+
+    final maxHpDelta = params['maxHpDelta'];
+    if (maxHpDelta is num) {
+      _applyMaxHpDelta(p, maxHpDelta.round());
     }
 
     game.notifyPlayerStatsChanged();

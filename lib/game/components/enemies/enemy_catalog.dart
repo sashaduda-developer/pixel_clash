@@ -34,8 +34,9 @@ class EnemyCatalog {
   }
 
   static List<_WeightedEnemyId> _cemeteryPool(double progress) {
-    final armoredWeight = ((progress - 0.15) / 0.85).clamp(0.0, 1.0) * 0.90;
-    final greatswordWeight = ((progress - 0.45) / 0.55).clamp(0.0, 1.0) * 0.70;
+    // Greatsword появляется раньше и растет быстрее, чтобы заметно встречаться в середине рана.
+    final armoredWeight = ((progress - 0.08) / 0.92).clamp(0.0, 1.0) * 0.95;
+    final greatswordWeight = ((progress - 0.20) / 0.80).clamp(0.0, 1.0) * 1.20;
 
     return <_WeightedEnemyId>[
       const _WeightedEnemyId(id: 'skeleton', weight: 1.0),

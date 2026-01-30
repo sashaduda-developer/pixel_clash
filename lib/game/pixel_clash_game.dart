@@ -5,6 +5,7 @@ import 'package:flame/components.dart' hide Timer;
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:pixel_clash/game/components/combat/active_ability.dart';
+import 'package:pixel_clash/game/components/combat/combat_event.dart';
 import 'package:pixel_clash/game/components/combat/rarity.dart';
 import 'package:pixel_clash/game/components/enemies/enemy_component.dart';
 import 'package:pixel_clash/game/components/enemies/types/final_boss.dart';
@@ -103,9 +104,9 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
   // ===== HIT-STOP =====
   bool _hitStopInProgress = false;
   double _hitStopCooldown = 0;
-  bool _bossSpawned = false;
-  bool _bossWarned = false;
-  bool _mainBossKeyDropped = false;
+  bool _firstBossSpawned = false;
+  bool _firstBossWarned = false;
+  bool _firstBossKeyDropped = false;
   bool _finalBossSpawned = false;
   bool _finalBossDefeated = false;
   bool _portalTransitionInProgress = false;
@@ -265,9 +266,9 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     abilitySlots.value = List<String?>.filled(4, null);
     mapIndex = 0;
     keysFound.value = 0;
-    _bossSpawned = false;
-    _bossWarned = false;
-    _mainBossKeyDropped = false;
+    _firstBossSpawned = false;
+    _firstBossWarned = false;
+    _firstBossKeyDropped = false;
     _finalBossSpawned = false;
     _finalBossDefeated = false;
     _portalTransitionInProgress = false;
@@ -319,19 +320,25 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     resumeEngine();
   }
 
-  void _spawnMainBoss() {
+  void _spawnFirstBoss() {
     worldMap.children.whereType<SkeletonBossComponent>().forEach((b) => b.removeFromParent());
+    worldMap.children.whereType<ArmoredSkeletonBossComponent>().forEach((b) => b.removeFromParent());
+    worldMap.children
+        .whereType<GreatswordSkeletonBossComponent>()
+        .forEach((b) => b.removeFromParent());
 
     final p = player;
     if (p == null) return;
 
     final pos = worldMap.clampToMap(p.position + Vector2(220, 0));
 
-    worldMap.add(
-      SkeletonBossComponent(
-        position: pos,
-      ),
-    );
+    final roll = rng.nextInt(3);
+    final boss = switch (roll) {
+      0 => SkeletonBossComponent(position: pos),
+      1 => ArmoredSkeletonBossComponent(position: pos),
+      _ => GreatswordSkeletonBossComponent(position: pos),
+    };
+    worldMap.add(boss);
   }
 
   void _spawnFinalBoss() {
@@ -448,6 +455,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
   void onKeyCollected() {
     if (keysFound.value >= requiredKeys) return;
     keysFound.value += 1;
+    player?.buffs.emit(const LootCollectedEvent(isKey: true));
     showAnnouncement(l10n.t('key_collected'), seconds: 1.4);
 
     if (keysFound.value >= requiredKeys) {
@@ -470,9 +478,15 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     _portalTransitionInProgress = false;
   }
 
+  bool _isFirstBoss(EnemyComponent enemy) {
+    return enemy is SkeletonBossComponent ||
+        enemy is ArmoredSkeletonBossComponent ||
+        enemy is GreatswordSkeletonBossComponent;
+  }
+
   void onEnemyKilled(EnemyComponent enemy) {
-    if (enemy is SkeletonBossComponent && !_mainBossKeyDropped) {
-      _mainBossKeyDropped = true;
+    if (_isFirstBoss(enemy) && !_firstBossKeyDropped) {
+      _firstBossKeyDropped = true;
       _spawnBossKey(enemy.position);
       showAnnouncement(l10n.t('boss_key_drop'), seconds: 2.0);
     }
@@ -498,9 +512,9 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
   void _advanceToNextMap() {
     mapIndex += 1;
     keysFound.value = 0;
-    _bossSpawned = false;
-    _bossWarned = false;
-    _mainBossKeyDropped = false;
+    _firstBossSpawned = false;
+    _firstBossWarned = false;
+    _firstBossKeyDropped = false;
     _finalBossSpawned = false;
     _finalBossDefeated = false;
     _swarmSpawned = false;
@@ -691,6 +705,9 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
   /// Вызывается UI после выбора карточки.
   void applyRewardAndResume(RewardDefinition reward) {
     reward.apply(this);
+    if (reward.kind == RewardKind.item) {
+      player?.buffs.emit(const LootCollectedEvent(isKey: false));
+    }
 
     overlays.remove(Overlays.rewardPick);
     rewardChoices.value = <RewardDefinition>[];
@@ -703,6 +720,9 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     if (reward == null) return;
 
     reward.apply(this);
+    if (reward.kind == RewardKind.item) {
+      player?.buffs.emit(const LootCollectedEvent(isKey: false));
+    }
 
     overlays.remove(Overlays.bossReward);
     bossRewardChoice.value = null;
@@ -741,11 +761,16 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
   void _onBiomeTimeChanged(double t) {
     timeLeft.value = t;
 
-    if (!_bossWarned &&
-        t <= GameConstants.bossSpawnTimeLeftSeconds + GameConstants.bossWarningLeadSeconds &&
-        t > GameConstants.bossSpawnTimeLeftSeconds) {
-      _bossWarned = true;
-      showAnnouncement(l10n.t('boss_warning'), seconds: GameConstants.bossWarningLeadSeconds);
+    if (!_firstBossWarned &&
+        t <=
+            GameConstants.firstBossSpawnTimeLeftSeconds +
+                GameConstants.firstBossWarningLeadSeconds &&
+        t > GameConstants.firstBossSpawnTimeLeftSeconds) {
+      _firstBossWarned = true;
+      showAnnouncement(
+        l10n.t('boss_warning'),
+        seconds: GameConstants.firstBossWarningLeadSeconds,
+      );
     }
 
     if (!_swarmWarned &&
@@ -765,11 +790,11 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
       );
     }
 
-    if (_bossSpawned) return;
-    if (t > GameConstants.bossSpawnTimeLeftSeconds) return;
+    if (_firstBossSpawned) return;
+    if (t > GameConstants.firstBossSpawnTimeLeftSeconds) return;
 
-    _bossSpawned = true;
-    _spawnMainBoss();
+    _firstBossSpawned = true;
+    _spawnFirstBoss();
   }
 
   void showAnnouncement(String text, {double seconds = 2.0}) {

@@ -66,3 +66,12 @@ class EnemyKilledEvent extends CombatEvent {
   final PositionComponent killer;
   final PositionComponent enemy;
 }
+
+/// Игрок получил ключ или предмет.
+class LootCollectedEvent extends CombatEvent {
+  const LootCollectedEvent({
+    required this.isKey,
+  });
+
+  final bool isKey;
+}

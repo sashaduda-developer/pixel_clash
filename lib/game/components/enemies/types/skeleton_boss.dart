@@ -1,22 +1,71 @@
 import 'package:flutter/material.dart';
-import 'package:pixel_clash/game/components/enemies/enemy_component.dart';
+import 'package:pixel_clash/game/components/enemies/animated_enemy_component.dart';
 
-/// Базовый босс-скелет (пока без способностей).
-class SkeletonBossComponent extends EnemyComponent {
-  SkeletonBossComponent({
+const AnimatedEnemyConfig _skeletonBossConfig = AnimatedEnemyConfig(
+  basePath: 'enemies/Skeleton/',
+  idleFile: 'Skeleton-Idle.png',
+  walkFile: 'Skeleton-Walk.png',
+  attackFile: 'Skeleton-Attack.png',
+  hurtFile: 'Skeleton-Hurt.png',
+  deathFile: 'Skeleton-Death.png',
+  idleFrames: 6,
+  walkFrames: 8,
+  attackFrames: 6,
+  hurtFrames: 4,
+  deathFrames: 4,
+  attackStepTime: 0.07,
+  spriteScale: 4.0,
+  attackDelaySec: 0.16,
+);
+
+const AnimatedEnemyConfig _armoredSkeletonBossConfig = AnimatedEnemyConfig(
+  basePath: 'enemies/Armored-Skeleton/',
+  idleFile: 'Armored Skeleton-Idle.png',
+  walkFile: 'Armored Skeleton-Walk.png',
+  attackFile: 'Armored Skeleton-Attack.png',
+  hurtFile: 'Armored Skeleton-Hurt.png',
+  deathFile: 'Armored Skeleton-Death.png',
+  idleFrames: 6,
+  walkFrames: 8,
+  attackFrames: 8,
+  hurtFrames: 4,
+  deathFrames: 4,
+  attackStepTime: 0.08,
+  spriteScale: 4.0,
+  attackDelaySec: 0.18,
+);
+
+const AnimatedEnemyConfig _greatswordSkeletonBossConfig = AnimatedEnemyConfig(
+  basePath: 'enemies/Greatsword-Skeleton/',
+  idleFile: 'Greatsword Skeleton-Idle.png',
+  walkFile: 'Greatsword Skeleton-Walk.png',
+  attackFile: 'Greatsword Skeleton-Attack.png',
+  hurtFile: 'Greatsword Skeleton-Hurt.png',
+  deathFile: 'Greatsword Skeleton-Death.png',
+  idleFrames: 6,
+  walkFrames: 9,
+  attackFrames: 8,
+  hurtFrames: 4,
+  deathFrames: 4,
+  attackStepTime: 0.09,
+  spriteScale: 4.0,
+  attackDelaySec: 0.22,
+);
+
+/// Р‘Р°Р·РѕРІС‹Р№ Р±РѕСЃСЃ-СЃРєРµР»РµС‚ (РїРѕРєР° Р±РµР· СЃРїРѕСЃРѕР±РЅРѕСЃС‚РµР№).
+abstract class _SkeletonBossBase extends AnimatedEnemyComponent {
+  _SkeletonBossBase({
+    required super.config,
     required super.position,
     super.speed = 70,
-    super.hp = 260,
-    super.damage = 14,
-    super.scoreReward = 40,
-    super.xpReward = 30,
+    super.hp = 320,
+    super.damage = 16,
+    super.scoreReward = 55,
+    super.xpReward = 40,
   });
 
   @override
   bool get isBoss => true;
-
-  @override
-  String get bossName => 'Король скелетов';
 
   @override
   Color get baseColor => const Color(0xFF8E24AA);
@@ -28,10 +77,10 @@ class SkeletonBossComponent extends EnemyComponent {
   Color get hpFillColor => const Color(0xFFAB47BC);
 
   @override
-  double get bodySize => 64;
+  double get bodySize => 70;
 
   @override
-  double get hitboxRadius => 30;
+  double get hitboxRadius => 32;
 
   @override
   double get hpBarHeight => 7.0;
@@ -41,4 +90,46 @@ class SkeletonBossComponent extends EnemyComponent {
 
   @override
   Color get eliteBorderColor => const Color(0x88FFFFFF);
+}
+
+class SkeletonBossComponent extends _SkeletonBossBase {
+  SkeletonBossComponent({
+    required super.position,
+    super.speed = 70,
+    super.hp = 320,
+    super.damage = 16,
+    super.scoreReward = 55,
+    super.xpReward = 40,
+  }) : super(config: _skeletonBossConfig);
+
+  @override
+  String get bossName => 'Король скелетов';
+}
+
+class ArmoredSkeletonBossComponent extends _SkeletonBossBase {
+  ArmoredSkeletonBossComponent({
+    required super.position,
+    super.speed = 68,
+    super.hp = 340,
+    super.damage = 17,
+    super.scoreReward = 60,
+    super.xpReward = 42,
+  }) : super(config: _armoredSkeletonBossConfig);
+
+  @override
+  String get bossName => 'РљРѕСЂРѕР»СЊ Р±СЂРѕРЅРёСЂРѕРІР°РЅРЅС‹С… СЃРєРµР»РµС‚РѕРІ';
+}
+
+class GreatswordSkeletonBossComponent extends _SkeletonBossBase {
+  GreatswordSkeletonBossComponent({
+    required super.position,
+    super.speed = 66,
+    super.hp = 350,
+    super.damage = 18,
+    super.scoreReward = 65,
+    super.xpReward = 45,
+  }) : super(config: _greatswordSkeletonBossConfig);
+
+  @override
+  String get bossName => 'РљРѕСЂРѕР»СЊ РґРІСѓСЂСѓС‡РЅС‹С… СЃРєРµР»РµС‚РѕРІ';
 }

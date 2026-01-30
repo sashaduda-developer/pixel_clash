@@ -37,5 +37,8 @@ flutter:
     - assets/images/characters/Wizard/
     - assets/images/characters/Swordsman/
     - assets/images/enemies/Skeleton/
+    - assets/images/enemies/Skeleton-Elite/
     - assets/images/enemies/Armored-Skeleton/
+    - assets/images/enemies/Armored-Skeleton-Elite/
     - assets/images/enemies/Greatsword-Skeleton/
+    - assets/images/enemies/Greatsword-Skeleton-Elite/

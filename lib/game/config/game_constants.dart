@@ -6,9 +6,9 @@ abstract class GameConstants {
   static const double cameraHeight = 450;
 
   // Длительность биома в секундах (0.1).
-  static const double biomeDurationSeconds = 420; // 7 минут
-  static const double bossSpawnTimeLeftSeconds = 240; // 4 минуты до конца биома
-  static const double bossWarningLeadSeconds = 5; // предупреждение за N секунд до босса
+  static const double biomeDurationSeconds = 242; // 7 минут
+  static const double firstBossSpawnTimeLeftSeconds = 240; // 4 минуты до конца биома
+  static const double firstBossWarningLeadSeconds = 5; // предупреждение за N секунд до босса
   static const double swarmTimeLeftSeconds = 300;
   static const double swarmWarningLeadSeconds = 5;
   static const int swarmSpawnBaseCount = 30;

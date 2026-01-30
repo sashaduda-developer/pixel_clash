@@ -72,6 +72,8 @@ class RewardRepository {
       }
     }
 
+    rows = rows.where((r) => _isEligibleForPlayer(r, game)).toList();
+
     if (rows.isEmpty) return <RewardDefinition>[];
 
     final usedIds = <String>{};
@@ -307,6 +309,82 @@ class RewardRepository {
     return HeroCatalog.isAlias(hero, heroKey);
   }
 
+  bool _isEligibleForPlayer(RewardDbRow row, PixelClashGame game) {
+    if (row.kind != 'item') return true;
+
+    final p = game.player;
+    if (p == null) return true;
+
+    final params = _decodeParams(row.paramsJson);
+
+    final armor = p.stats.armor;
+    final damage = p.stats.damage;
+    final maxHp = p.stats.maxHp;
+    final maxMana = p.stats.maxMana;
+    final healMultiplier = p.stats.healMultiplier;
+    final bossMult = game.runModifiers.bossDamageMultiplier;
+
+    final armorDelta = params['armorDelta'];
+    if (armorDelta is num && armorDelta < 0) {
+      final next = max(0, armor + armorDelta.round());
+      if (next >= armor) return false;
+    }
+
+    final armorPct = params['armorPct'];
+    if (armorPct is num && armorPct > 0) {
+      final mult = (1.0 - armorPct.toDouble()).clamp(0.0, 1.0);
+      final next = max(0, (armor * mult).round());
+      if (next >= armor) return false;
+    }
+
+    final maxHpDelta = params['maxHpDelta'];
+    if (maxHpDelta is num && maxHpDelta < 0) {
+      final next = max(1, maxHp + maxHpDelta.round());
+      if (next >= maxHp) return false;
+    }
+
+    final damageDelta = params['damageDelta'];
+    if (damageDelta is num && damageDelta < 0) {
+      final next = max(1, damage + damageDelta.round());
+      if (next >= damage) return false;
+    }
+
+    final maxHpPct = params['maxHpPct'];
+    if (maxHpPct is num && maxHpPct > 0) {
+      final mult = (1.0 - maxHpPct.toDouble()).clamp(0.1, 1.0);
+      final next = max(1, (maxHp * mult).round());
+      if (next >= maxHp) return false;
+    }
+
+    final maxManaPct = params['maxManaPct'];
+    if (maxManaPct is num && maxManaPct > 0) {
+      final mult = (1.0 - maxManaPct.toDouble()).clamp(0.0, 1.0);
+      final next = max(0.0, maxMana * mult);
+      if (next >= maxMana - 1e-6) return false;
+    }
+
+    final manaRegenDelta = params['manaRegenDelta'];
+    if (manaRegenDelta is num && manaRegenDelta < 0) {
+      if (p.stats.manaRegen <= 0) return false;
+      final next = p.stats.manaRegen + manaRegenDelta.toDouble();
+      if (next >= p.stats.manaRegen - 1e-6) return false;
+    }
+
+    final bossDamageMult = params['bossDamageMult'];
+    if (bossDamageMult is num && bossDamageMult < 1) {
+      final next = (bossMult * bossDamageMult.toDouble()).clamp(0.2, 2.0);
+      if (next >= bossMult - 1e-6) return false;
+    }
+
+    final healMult = params['healMultiplier'];
+    if (healMult is num && healMult < 1) {
+      final next = (healMultiplier * healMult.toDouble()).clamp(0.1, 5.0);
+      if (next >= healMultiplier - 1e-6) return false;
+    }
+
+    return true;
+  }
+
   int? _maxLevelFromParams(Map<String, Object?> params) {
     final raw = params['maxLevel'];
     if (raw is! num) return null;
@@ -426,12 +504,18 @@ class RewardRepository {
       'armorDelta' => 'Броня',
       'attackSpeedPct' => 'Скорость атаки',
       'maxManaPct' => 'Макс мана',
+      'manaRegenDelta' => 'Реген маны',
       'maxHpPct' => 'Макс HP',
       'reflectPct' => 'Отражение',
       'healMultiplier' => 'Исцеление',
       'maxHpDelta' => 'Макс HP',
       'damageDelta' => 'Урон',
       'xpGainMult' => 'XP',
+      'voidProcChance' => 'Шанс пустоты',
+      'voidDurationSec' => 'Пустота',
+      'voidCooldownSec' => 'КД пустоты',
+      'sprintSpeedPct' => 'Рывок',
+      'sprintDurationSec' => 'Длительность',
       _ => null,
     };
   }
@@ -450,6 +534,8 @@ class RewardRepository {
       case 'moveSpeedPct':
       case 'attackSpeedPct':
       case 'reflectPct':
+      case 'voidProcChance':
+      case 'sprintSpeedPct':
         return '${(v * 100).round()}%';
       case 'armorPct':
       case 'maxManaPct':
@@ -465,10 +551,16 @@ class RewardRepository {
       case 'eliteDmgMult':
       case 'eliteScoreMult':
         return 'x${v.toStringAsFixed(2)}';
+      case 'voidDurationSec':
+      case 'voidCooldownSec':
+      case 'sprintDurationSec':
+        return '${v.toStringAsFixed(1)}с';
       case 'maxHpDelta':
       case 'damageDelta':
       case 'armorDelta':
         return v >= 0 ? '+${v.round()}' : '${v.round()}';
+      case 'manaRegenDelta':
+        return v >= 0 ? '+${v.toStringAsFixed(1)}' : '${v.toStringAsFixed(1)}';
     }
 
     return v.toStringAsFixed(2);
@@ -497,10 +589,19 @@ class RewardRepository {
       case 'damageDelta':
       case 'armorDelta':
         return v < 0 ? RewardStatPolarity.negative : RewardStatPolarity.positive;
+      case 'manaRegenDelta':
+        return v < 0 ? RewardStatPolarity.negative : RewardStatPolarity.positive;
       case 'armorPct':
       case 'maxManaPct':
       case 'maxHpPct':
         return RewardStatPolarity.negative;
+      case 'voidProcChance':
+      case 'voidDurationSec':
+      case 'sprintSpeedPct':
+      case 'sprintDurationSec':
+        return RewardStatPolarity.positive;
+      case 'voidCooldownSec':
+        return RewardStatPolarity.neutral;
       case 'bossDamageMult':
       case 'healMultiplier':
         if (v < 1) return RewardStatPolarity.negative;
