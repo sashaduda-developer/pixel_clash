@@ -3,17 +3,22 @@ import 'package:pixel_clash/game/components/combat/buffs/altar/level_based_buff.
 import 'package:pixel_clash/game/components/combat/combat_event.dart';
 import 'package:pixel_clash/game/components/player/player_component.dart';
 
-/// Уклонение-удар: усиливает крит после успешного уворота.
-class NinjaEvasionStrikeBuff extends LevelBasedBuff {
-  NinjaEvasionStrikeBuff({
+/// РўСЂРѕР№РЅРѕР№ СѓРґР°СЂ: С€Р°РЅСЃ Рё СѓСЂРѕРЅ С‚СЂРµС‚СЊРµРіРѕ СѓРґР°СЂР°.
+class SamuraiTripleStrikeBuff extends LevelBasedBuff {
+  SamuraiTripleStrikeBuff({
     required super.rarity,
     required super.maxLevel,
     required super.levels,
-  }) : super(id: 'buff_ninja_evasion_strike');
+  }) : super(id: 'buff_samurai_triple_strike');
 
-  double get critBonusMultiplier {
+  double get thirdHitChance {
     final v = levelValues();
-    return altarNum(v, 'critBonusMultiplier', 0.0);
+    return altarNum(v, 'thirdHitChance', 0.0);
+  }
+
+  double get thirdHitDamageMultiplier {
+    final v = levelValues();
+    return altarNum(v, 'thirdHitDamageMultiplier', 0.8);
   }
 
   @override

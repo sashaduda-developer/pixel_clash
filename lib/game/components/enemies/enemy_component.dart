@@ -40,6 +40,7 @@ class EnemyComponent extends PositionComponent
   String get bossName => 'Boss';
 
   bool _isDead = false;
+  bool _showHpBar = false;
 
   @override
   bool get isDead => _isDead;
@@ -72,6 +73,11 @@ class EnemyComponent extends PositionComponent
   double get hpBarHeight => 4.0;
   bool get drawEliteBorder => false;
   Color get eliteBorderColor => const Color(0x66FFFFFF);
+  bool get drawBody => true;
+  double get meleeAttackDelaySec => 0.0;
+  void onDamageTaken() {}
+  void onDeath() {}
+  double get deathDespawnDelaySec => 0.0;
 
   double _flashTimer = 0;
   static const double _flashDuration = 0.08;
@@ -118,32 +124,36 @@ class EnemyComponent extends PositionComponent
   void render(Canvas canvas) {
     super.render(canvas);
 
-    final bodyPaint = Paint()..color = (_flashTimer > 0) ? flashColor : baseColor;
+    if (drawBody) {
+      final bodyPaint = Paint()..color = (_flashTimer > 0) ? flashColor : baseColor;
 
-    final rect = Rect.fromCenter(
-      center: Offset(size.x / 2, size.y / 2),
-      width: size.x,
-      height: size.y,
-    );
-    canvas.drawRect(rect, bodyPaint);
+      final rect = Rect.fromCenter(
+        center: Offset(size.x / 2, size.y / 2),
+        width: size.x,
+        height: size.y,
+      );
+      canvas.drawRect(rect, bodyPaint);
 
-    if (drawEliteBorder) {
-      final border = Paint()
-        ..color = eliteBorderColor
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2;
-      canvas.drawRect(rect, border);
+      if (drawEliteBorder) {
+        final border = Paint()
+          ..color = eliteBorderColor
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2;
+        canvas.drawRect(rect, border);
+      }
+
+      if (_freezeLeft > 0) {
+        _renderFreezeOverlay(canvas, rect);
+      }
+
+      if (_burnLeft > 0) {
+        _renderBurnOverlay(canvas, rect);
+      }
     }
 
-    if (_freezeLeft > 0) {
-      _renderFreezeOverlay(canvas, rect);
+    if (_showHpBar) {
+      _renderHpBar(canvas);
     }
-
-    if (_burnLeft > 0) {
-      _renderBurnOverlay(canvas, rect);
-    }
-
-    _renderHpBar(canvas);
   }
 
   /// Рисуем HP-бар над врагом.
@@ -364,12 +374,35 @@ class EnemyComponent extends PositionComponent
     if (_attackCooldown > 0) return;
     if (_freezeLeft > 0 || _stunLeft > 0) return;
     _attackCooldown = 0.7;
+    onMeleeAttack();
+    final delay = meleeAttackDelaySec;
+    if (delay <= 0) {
+      _dealMeleeDamage(player);
+      return;
+    }
+
+    game.worldMap.add(
+      TimerComponent(
+        period: delay,
+        repeat: false,
+        onTick: () {
+          if (_isDead || player.isRemoving || player.hp <= 0) return;
+          _dealMeleeDamage(player);
+        },
+      ),
+    );
+  }
+
+  void _dealMeleeDamage(PlayerComponent player) {
     player.takeDamage(
       damage,
       attacker: this,
       sourceType: DamageSourceType.melee,
     );
   }
+
+  /// Хук для анимации/визуала удара (по умолчанию пустой).
+  void onMeleeAttack() {}
 
   /// Отталкиваем врага от игрока, чтобы не проходил насквозь.
   void _resolvePlayerOverlap(PlayerComponent player) {
@@ -406,6 +439,7 @@ class EnemyComponent extends PositionComponent
   }) {
     if (_isDead) return;
 
+    _showHpBar = true;
     var finalDamage = value;
     if (isBoss && attacker is PlayerComponent) {
       final mult = game.runModifiers.bossDamageMultiplier;
@@ -449,6 +483,9 @@ class EnemyComponent extends PositionComponent
     }
 
     _hp -= finalDamage;
+    if (_hp > 0) {
+      onDamageTaken();
+    }
     if (_hp <= 0) _die();
   }
 
@@ -462,6 +499,7 @@ class EnemyComponent extends PositionComponent
     }
 
     _hitbox.collisionType = CollisionType.inactive;
+    onDeath();
 
     game.scoreSystem.addScore(scoreReward);
     game.xpSystem.addXp(xpReward);
@@ -478,9 +516,23 @@ class EnemyComponent extends PositionComponent
 
     game.onEnemyKilled(this);
 
-    Future<void>.microtask(() {
-      if (!isRemoving) removeFromParent();
-    });
+    final delay = deathDespawnDelaySec;
+    if (delay <= 0) {
+      Future<void>.microtask(() {
+        if (!isRemoving) removeFromParent();
+      });
+      return;
+    }
+
+    game.worldMap.add(
+      TimerComponent(
+        period: delay,
+        repeat: false,
+        onTick: () {
+          if (!isRemoving) removeFromParent();
+        },
+      ),
+    );
   }
 }
 

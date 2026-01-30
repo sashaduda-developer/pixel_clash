@@ -13,7 +13,7 @@ import 'package:pixel_clash/game/components/interactables/altar_component.dart';
 import 'package:pixel_clash/game/components/interactables/chest_component.dart';
 import 'package:pixel_clash/game/components/interactables/key_component.dart';
 import 'package:pixel_clash/game/components/interactables/portal_component.dart';
-import 'package:pixel_clash/game/components/player/hero_type.dart';
+import 'package:pixel_clash/game/components/player/hero_definition.dart';
 import 'package:pixel_clash/game/components/player/player_component.dart';
 import 'package:pixel_clash/game/components/systems/biome_timer.dart';
 import 'package:pixel_clash/game/components/systems/enemy_spawner.dart';
@@ -188,7 +188,6 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
 
     enemySpawner = EnemySpawner(
       threatSystem: threatSystem,
-      scoreSystem: scoreSystem,
     );
 
     add(scoreSystem);
@@ -252,7 +251,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
 
   // ===== start/reset =====
 
-  Future<void> startGame(HeroType heroType) async {
+  Future<void> startGame(HeroDefinition hero) async {
     overlays.remove(Overlays.heroSelect);
 
     // билд сбрасываем на новый ран
@@ -290,7 +289,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     final spawn = worldMap.mapSize / 2;
 
     final newPlayer = PlayerComponent(
-      heroType: heroType,
+      hero: hero,
       position: spawn,
     );
 

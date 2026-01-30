@@ -48,8 +48,8 @@ class UpgradeRegistry {
       'buff_ricochet': _applyRicochet,
       'buff_mage_fire_sphere': _applyMageFireSphere,
       'buff_mage_mana_surge': _applyMageManaSurge,
-      'buff_ninja_triple_strike': _applyNinjaTripleStrike,
-      'buff_ninja_evasion_strike': _applyNinjaEvasionStrike,
+      'buff_samurai_triple_strike': _applySamuraiTripleStrike,
+      'buff_samurai_evasion_strike': _applySamuraiEvasionStrike,
       'buff_knight_wave_pierce': _applyKnightWavePierce,
       'buff_knight_crushing_stun': _applyKnightCrushingStun,
       'buff_bleed_on_hit': _applyBleedOnHit,
@@ -341,7 +341,7 @@ class UpgradeRegistry {
     );
   }
 
-  void _applyNinjaTripleStrike(
+  void _applySamuraiTripleStrike(
     PixelClashGame game,
     Map<String, Object?> params,
     PlayerBuildState build,
@@ -350,7 +350,7 @@ class UpgradeRegistry {
     final p = game.player;
     if (p == null) return;
     p.buffs.addBuff(
-      NinjaTripleStrikeBuff(
+      SamuraiTripleStrikeBuff(
         rarity: rarity,
         maxLevel: _maxLevelFromParams(params),
         levels: _levelsFromParams(params),
@@ -358,7 +358,7 @@ class UpgradeRegistry {
     );
   }
 
-  void _applyNinjaEvasionStrike(
+  void _applySamuraiEvasionStrike(
     PixelClashGame game,
     Map<String, Object?> params,
     PlayerBuildState build,
@@ -367,7 +367,7 @@ class UpgradeRegistry {
     final p = game.player;
     if (p == null) return;
     p.buffs.addBuff(
-      NinjaEvasionStrikeBuff(
+      SamuraiEvasionStrikeBuff(
         rarity: rarity,
         maxLevel: _maxLevelFromParams(params),
         levels: _levelsFromParams(params),

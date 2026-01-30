@@ -8,8 +8,8 @@ export 'package:pixel_clash/game/components/combat/buffs/altar/level_based_buff.
 export 'package:pixel_clash/game/components/combat/buffs/altar/mage_fire_sphere_buff.dart';
 export 'package:pixel_clash/game/components/combat/buffs/altar/mage_mana_surge_buff.dart';
 export 'package:pixel_clash/game/components/combat/buffs/altar/nova_burst_buff.dart';
-export 'package:pixel_clash/game/components/combat/buffs/altar/ninja_evasion_strike_buff.dart';
-export 'package:pixel_clash/game/components/combat/buffs/altar/ninja_triple_strike_buff.dart';
+export 'package:pixel_clash/game/components/combat/buffs/altar/samurai_evasion_strike_buff.dart';
+export 'package:pixel_clash/game/components/combat/buffs/altar/samurai_triple_strike_buff.dart';
 export 'package:pixel_clash/game/components/combat/buffs/altar/piercing_projectiles_buff.dart';
 export 'package:pixel_clash/game/components/combat/buffs/altar/poison_cloud_buff.dart';
 export 'package:pixel_clash/game/components/combat/buffs/altar/reaper_mark_buff.dart';

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:pixel_clash/game/components/player/hero_type.dart';
+import 'package:pixel_clash/game/components/player/hero_definition.dart';
 import 'package:pixel_clash/game/localization/l10n.dart';
 import 'package:pixel_clash/game/pixel_clash_game.dart';
 import 'package:pixel_clash/game/ui/overlays.dart';
@@ -12,6 +12,7 @@ class HeroSelectOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final L10n l10n = game.l10n;
+    final heroes = HeroCatalog.all;
 
     return SafeArea(
       child: Material(
@@ -40,29 +41,14 @@ class HeroSelectOverlay extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _HeroButton(
-                    title: l10n.t('hero_ranger_title'),
-                    subtitle: l10n.t('hero_ranger_subtitle'),
-                    onTap: () async => _start(HeroType.ranger),
-                  ),
-                  const SizedBox(height: 10),
-                  _HeroButton(
-                    title: l10n.t('hero_knight_title'),
-                    subtitle: l10n.t('hero_knight_subtitle'),
-                    onTap: () async => _start(HeroType.knight),
-                  ),
-                  const SizedBox(height: 10),
-                  _HeroButton(
-                    title: l10n.t('hero_mage_title'),
-                    subtitle: l10n.t('hero_mage_subtitle'),
-                    onTap: () async => _start(HeroType.mage),
-                  ),
-                  const SizedBox(height: 10),
-                  _HeroButton(
-                    title: l10n.t('hero_ninja_title'),
-                    subtitle: l10n.t('hero_ninja_subtitle'),
-                    onTap: () async => _start(HeroType.ninja),
-                  ),
+                  for (var i = 0; i < heroes.length; i++) ...[
+                    _HeroButton(
+                      title: l10n.t(heroes[i].titleKey),
+                      subtitle: l10n.t(heroes[i].subtitleKey),
+                      onTap: () async => _start(heroes[i]),
+                    ),
+                    if (i != heroes.length - 1) const SizedBox(height: 10),
+                  ],
                 ],
               ),
             ),
@@ -72,9 +58,9 @@ class HeroSelectOverlay extends StatelessWidget {
     );
   }
 
-  Future<void> _start(HeroType type) async {
+  Future<void> _start(HeroDefinition hero) async {
     game.overlays.remove(Overlays.heroSelect);
-    await game.startGame(type);
+    await game.startGame(hero);
 
     if (!game.overlays.isActive(Overlays.hud)) {
       game.overlays.add(Overlays.hud);

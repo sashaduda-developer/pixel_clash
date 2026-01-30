@@ -1,5 +1,7 @@
-import 'package:flame/components.dart';
+import 'dart:math';
+
 import 'package:flame/collisions.dart';
+import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 import 'package:pixel_clash/game/components/combat/combat_event.dart';
 import 'package:pixel_clash/game/components/combat/damageable.dart';
@@ -25,6 +27,9 @@ class ProjectileArrow extends PositionComponent with CollisionCallbacks {
     this.paintColor = const Color(0xFFFFD54F),
     this.sizeOverride,
     this.visual = ProjectileVisual.bolt,
+    this.sprite,
+    this.spriteAnimation,
+    this.angleOffset = 0.0,
     this.pierceCount = 0,
     this.ricochetBounces = 0,
     this.ricochetDamageMultiplier = 0.7,
@@ -47,6 +52,9 @@ class ProjectileArrow extends PositionComponent with CollisionCallbacks {
   final Color paintColor;
   final Vector2? sizeOverride;
   final ProjectileVisual visual;
+  final Sprite? sprite;
+  final SpriteAnimation? spriteAnimation;
+  final double angleOffset;
 
   /// Сколько целей может пробить, не исчезая.
   int pierceCount;
@@ -67,6 +75,8 @@ class ProjectileArrow extends PositionComponent with CollisionCallbacks {
   double _life = 0;
 
   final Paint _paint;
+  SpriteComponent? _spriteComponent;
+  SpriteAnimationComponent? _spriteAnimationComponent;
 
   final Set<EnemyComponent> _hitEnemies = <EnemyComponent>{};
 
@@ -78,7 +88,25 @@ class ProjectileArrow extends PositionComponent with CollisionCallbacks {
     anchor = Anchor.center;
 
     // Разворачиваем под направление.
-    angle = _direction.angleToSigned(Vector2(1, 0));
+    angle = atan2(_direction.y, _direction.x) + angleOffset;
+
+    if (spriteAnimation != null) {
+      _spriteAnimationComponent = SpriteAnimationComponent(
+        animation: spriteAnimation,
+        size: size.clone(),
+        anchor: Anchor.center,
+        position: size / 2,
+      );
+      add(_spriteAnimationComponent!);
+    } else if (sprite != null) {
+      _spriteComponent = SpriteComponent(
+        sprite: sprite,
+        size: size.clone(),
+        anchor: Anchor.center,
+        position: size / 2,
+      );
+      add(_spriteComponent!);
+    }
 
     _hitbox = RectangleHitbox(size: size);
     add(_hitbox);
@@ -101,6 +129,8 @@ class ProjectileArrow extends PositionComponent with CollisionCallbacks {
   @override
   void render(Canvas canvas) {
     super.render(canvas);
+
+    if (_spriteComponent != null || _spriteAnimationComponent != null) return;
 
     switch (visual) {
       case ProjectileVisual.bolt:
@@ -177,6 +207,9 @@ class ProjectileArrow extends PositionComponent with CollisionCallbacks {
                 paintColor: paintColor,
                 sizeOverride: sizeOverride,
                 visual: visual,
+                sprite: sprite,
+                spriteAnimation: spriteAnimation,
+                angleOffset: angleOffset,
                 pierceCount: pierceCount,
                 ricochetBounces: ricochetBounces - 1,
                 ricochetDamageMultiplier: ricochetDamageMultiplier,

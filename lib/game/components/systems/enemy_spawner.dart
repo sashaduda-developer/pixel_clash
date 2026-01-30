@@ -1,11 +1,7 @@
 import 'dart:math';
 
 import 'package:flame/components.dart';
-import 'package:pixel_clash/game/components/enemies/enemy_factory.dart';
-import 'package:pixel_clash/game/components/enemies/types/skeleton_enemy_factory.dart';
-import 'package:pixel_clash/game/components/enemies/types/wraith_enemy_factory.dart';
-import 'package:pixel_clash/game/components/enemies/types/brute_enemy_factory.dart';
-import 'package:pixel_clash/game/components/systems/score_system.dart';
+import 'package:pixel_clash/game/components/enemies/enemy_catalog.dart';
 import 'package:pixel_clash/game/components/systems/threat_system.dart';
 import 'package:pixel_clash/game/config/game_constants.dart';
 import 'package:pixel_clash/game/pixel_clash_game.dart';
@@ -13,21 +9,14 @@ import 'package:pixel_clash/game/pixel_clash_game.dart';
 class EnemySpawner extends Component with HasGameReference<PixelClashGame> {
   EnemySpawner({
     required this.threatSystem,
-    required this.scoreSystem,
   });
 
   final ThreatSystem threatSystem;
-  final ScoreSystem scoreSystem;
 
   bool isPaused = false;
 
   final Random _rng = Random();
   double _cooldown = 0;
-  final List<EnemyFactory> _factories = <EnemyFactory>[
-    SkeletonEnemyFactory(),
-    WraithEnemyFactory(),
-    BruteEnemyFactory(),
-  ];
 
   @override
   void update(double dt) {
@@ -85,33 +74,6 @@ class EnemySpawner extends Component with HasGameReference<PixelClashGame> {
     return (1.0 - (left / total)).clamp(0.0, 1.0);
   }
 
-  EnemyFactory _pickFactoryForProgress(double progress) {
-    final wraithWeight = ((progress - 0.10) / 0.90).clamp(0.0, 1.0) * 0.90;
-    final bruteWeight = ((progress - 0.45) / 0.55).clamp(0.0, 1.0) * 0.70;
-
-    final pool = <_WeightedFactory>[
-      const _WeightedFactory(factoryId: 'skeleton', weight: 1.0),
-      if (wraithWeight > 0) _WeightedFactory(factoryId: 'wraith', weight: wraithWeight),
-      if (bruteWeight > 0) _WeightedFactory(factoryId: 'brute', weight: bruteWeight),
-    ];
-    final total = pool.fold(0.0, (sum, e) => sum + e.weight);
-    var roll = _rng.nextDouble() * total;
-    for (final e in pool) {
-      roll -= e.weight;
-      if (roll <= 0) {
-        return _factoryById(e.factoryId);
-      }
-    }
-    return _factoryById(pool.last.factoryId);
-  }
-
-  EnemyFactory _factoryById(String id) {
-    for (final f in _factories) {
-      if (f.id == id) return f;
-    }
-    return _factories.first;
-  }
-
   void _spawnEnemy({double? eliteChanceOverride}) {
     final player = game.player!;
     final world = game.worldMap;
@@ -158,7 +120,11 @@ class EnemySpawner extends Component with HasGameReference<PixelClashGame> {
 
     xpReward = (xpReward * game.runModifiers.xpGainMultiplier).round().clamp(1, 999999);
 
-    final factory = _pickFactoryForProgress(progress);
+    final factory = EnemyCatalog.pickFactory(
+      mapIndex: game.mapIndex,
+      progress: progress,
+      rng: _rng,
+    );
     final enemy = isElite
         ? factory.createElite(
             position: pos,
@@ -179,10 +145,4 @@ class EnemySpawner extends Component with HasGameReference<PixelClashGame> {
 
     world.add(enemy);
   }
-}
-
-class _WeightedFactory {
-  const _WeightedFactory({required this.factoryId, required this.weight});
-  final String factoryId;
-  final double weight;
 }

@@ -32,4 +32,10 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/images/
+    - assets/images/characters/Knight/
+    - assets/images/characters/Archer/
+    - assets/images/characters/Wizard/
+    - assets/images/characters/Swordsman/
+    - assets/images/enemies/Skeleton/
+    - assets/images/enemies/Armored-Skeleton/
+    - assets/images/enemies/Greatsword-Skeleton/

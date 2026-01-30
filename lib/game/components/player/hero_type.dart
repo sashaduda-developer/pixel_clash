@@ -4,5 +4,5 @@ enum HeroType {
   ranger,
   knight,
   mage,
-  ninja,
+  samurai,
 }

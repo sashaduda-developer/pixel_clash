@@ -1,45 +1,89 @@
 import 'dart:math';
 
-import 'package:flame/components.dart';
 import 'package:flame/collisions.dart';
+import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 import 'package:pixel_clash/game/components/combat/buff_system.dart';
 import 'package:pixel_clash/game/components/combat/buffs/altar_buffs.dart';
 import 'package:pixel_clash/game/components/combat/combat_event.dart';
-import 'package:pixel_clash/game/components/combat/melee_swing.dart';
 import 'package:pixel_clash/game/components/combat/projectile_arrow.dart';
 import 'package:pixel_clash/game/components/enemies/enemy_component.dart';
 import 'package:pixel_clash/game/components/player/attack_profile.dart';
+import 'package:pixel_clash/game/components/player/hero_definition.dart';
 import 'package:pixel_clash/game/components/player/hero_type.dart';
+import 'package:pixel_clash/game/components/player/hero_visuals.dart';
+import 'package:pixel_clash/game/components/player/player_attack_behavior.dart';
 import 'package:pixel_clash/game/components/player/player_stats.dart';
 import 'package:pixel_clash/game/pixel_clash_game.dart';
 import 'package:pixel_clash/game/ui/damage_number_component.dart';
 import 'package:pixel_clash/game/ui/hit_particles.dart';
 
 class PlayerComponent extends PositionComponent
-    with HasGameReference<PixelClashGame>, CollisionCallbacks {
+    with HasGameReference<PixelClashGame>, CollisionCallbacks
+    implements PlayerAttackContext {
   PlayerComponent({
-    required this.heroType,
+    required this.hero,
     required super.position,
-  })  : stats = PlayerStats.forHero(heroType),
-        attackProfile = AttackProfile.forHero(heroType);
+  })  : stats = hero.createStats(),
+        attackProfile = hero.attackProfile,
+        _attackBehavior = hero.attackBehavior;
 
-  final HeroType heroType;
+  final HeroDefinition hero;
+  @override
   final PlayerStats stats;
+  @override
   final AttackProfile attackProfile;
+  final PlayerAttackBehavior _attackBehavior;
+
+  HeroType get heroType => hero.type;
 
   int get hp => stats.hp;
   int get maxHp => stats.maxHp;
+  @override
+  PositionComponent get owner => this;
+
+  @override
+  Sprite? get arrowSprite => _arrowSprite;
+
+  @override
+  Size? get arrowSpriteSize => _arrowSpriteSize;
+
+  @override
+  Sprite? get fireballSprite => _fireballSprite;
+
+  @override
+  SpriteAnimation? get fireballAnimation => _fireballAnimation;
+
+  @override
+  Size? get fireballSpriteSize => _fireballSpriteSize;
 
   late final CircleHitbox _hitbox;
+  @override
   late final BuffSystem buffs;
 
   bool _isDead = false;
+  bool _facingLeft = false;
+  double _attackAnimTimeLeft = 0;
+  double _hurtAnimTimeLeft = 0;
+  double _deathAnimTimeLeft = 0;
+  double _faceOverrideTimeLeft = 0;
+  double _spriteScale = 1.0;
+  double _attackAnimDurationSec = 0.0;
+  double _hurtAnimDurationSec = 0.0;
+  double _deathAnimDurationSec = 0.0;
 
-  final Color _baseColorRanger = const Color(0xFF42A5F5);
-  final Color _baseColorKnight = const Color(0xFF66BB6A);
-  final Color _baseColorMage = const Color(0xFF26C6DA);
-  final Color _baseColorNinja = const Color(0xFFEF5350);
+  SpriteAnimationComponent? _sprite;
+  SpriteAnimation? _idleAnimation;
+  SpriteAnimation? _walkAnimation;
+  SpriteAnimation? _attackAnimation;
+  SpriteAnimation? _hurtAnimation;
+  SpriteAnimation? _deathAnimation;
+  SpriteAnimation? _fireballAnimation;
+  Sprite? _arrowSprite;
+  Sprite? _fireballSprite;
+  Size? _arrowSpriteSize;
+  Size? _fireballSpriteSize;
+
   final Color _flashColor = const Color(0xFFFFFFFF);
 
   double _flashTimer = 0;
@@ -59,6 +103,12 @@ class PlayerComponent extends PositionComponent
 
     game.notifyPlayerStatsChanged();
     buffs = BuffSystem(this);
+
+    final visuals = await hero.visuals.load(
+      game,
+      componentSize: size,
+    );
+    _applyVisuals(visuals);
   }
 
   @override
@@ -71,48 +121,46 @@ class PlayerComponent extends PositionComponent
     _flashTimer = max(0, _flashTimer - dt);
 
     final dir = game.joystick.relativeDelta.clone();
+    final isMoving = dir.length2 > 0;
     if (dir.length2 > 0) {
       dir.normalize();
       position += dir * stats.moveSpeed * dt;
       position = game.worldMap.clampToMap(position);
     }
+    _updateSpriteAnimation(isMoving, dir);
 
     _attackTimer += dt;
     final interval = (1.0 / stats.attackSpeed).clamp(0.12, 10.0);
     if (_attackTimer >= interval) {
-      _attackTimer = 0;
-      _autoAttack();
+      if (_autoAttack()) {
+        _attackTimer = 0;
+      } else {
+        _attackTimer = interval;
+      }
     }
+    _attackAnimTimeLeft = max(0, _attackAnimTimeLeft - dt);
+    _hurtAnimTimeLeft = max(0, _hurtAnimTimeLeft - dt);
+    _deathAnimTimeLeft = max(0, _deathAnimTimeLeft - dt);
+    _faceOverrideTimeLeft = max(0, _faceOverrideTimeLeft - dt);
 
     // Апдейт баффов после перемещения и атаки.
     buffs.update(dt);
     _updateRegen(dt);
   }
 
-  void _autoAttack() {
-    switch (attackProfile.style) {
-      case AttackStyle.ranger:
-        _rangerAttack();
-        break;
-      case AttackStyle.knight:
-        _knightAttack();
-        break;
-      case AttackStyle.mage:
-        _mageAttack();
-        break;
-      case AttackStyle.ninja:
-        _ninjaAttack();
-        break;
-    }
+  bool _autoAttack() {
+    return _attackBehavior.tryAttack(this);
   }
 
   /// Роллим урон и флаг крита.
-  (int, bool) _rollDamage() {
+  @override
+  (int, bool) rollDamage() {
     final base = stats.damage;
 
     if (_forceCritNext) {
       _forceCritNext = false;
-      final evasionBuff = buffs.getBuffAs<NinjaEvasionStrikeBuff>('buff_ninja_evasion_strike');
+      final evasionBuff =
+          buffs.getBuffAs<SamuraiEvasionStrikeBuff>('buff_samurai_evasion_strike');
       final bonus = evasionBuff?.critBonusMultiplier ?? 0.0;
       final dmg = (base * (stats.critMultiplier + bonus)).round();
       return (dmg, true);
@@ -125,7 +173,15 @@ class PlayerComponent extends PositionComponent
     return (dmg, isCrit);
   }
 
-  EnemyComponent? _findNearestEnemyInRange({
+  @override
+  bool rollChance(double chance) {
+    if (chance <= 0) return false;
+    final clamped = chance.clamp(0.0, 1.0);
+    return game.rng.nextDouble() < clamped;
+  }
+
+  @override
+  EnemyComponent? findNearestEnemyInRange({
     required bool onlyVisibleOnScreen,
     required double range,
   }) {
@@ -155,154 +211,8 @@ class PlayerComponent extends PositionComponent
     return best;
   }
 
-  void _rangerAttack() {
-    final target = _findNearestEnemyInRange(
-      onlyVisibleOnScreen: true,
-      range: attackProfile.range,
-    );
-    if (target == null) return;
-
-    final dir = (target.position - position);
-    if (dir.length2 <= 0.0001) return;
-
-    final (dmg, isCrit) = _rollDamage();
-
-    _shootProjectile(
-      direction: dir,
-      damage: dmg,
-      isCrit: isCrit,
-      speed: attackProfile.projectileSpeed,
-      color: attackProfile.projectileColor,
-      size: attackProfile.projectileSize,
-      sourceType: DamageSourceType.arrow,
-    );
-  }
-
-  void _mageAttack() {
-    final target = _findNearestEnemyInRange(
-      onlyVisibleOnScreen: true,
-      range: attackProfile.range,
-    );
-    if (target == null) return;
-
-    final dir = (target.position - position);
-    if (dir.length2 <= 0.0001) return;
-
-    var (dmg, isCrit) = _rollDamage();
-    final manaBuff = buffs.getBuffAs<MageManaSurgeBuff>('buff_mage_mana_surge');
-    if (manaBuff != null) {
-      final cost = manaBuff.manaCost;
-      if (cost > 0 && !stats.spendMana(cost)) return;
-      if (cost > 0) game.notifyPlayerStatsChanged();
-
-      dmg = (dmg * manaBuff.damageMultiplier).round().clamp(1, 999999);
-    }
-
-    _shootProjectile(
-      direction: dir,
-      damage: dmg,
-      isCrit: isCrit,
-      speed: attackProfile.projectileSpeed,
-      color: attackProfile.projectileColor,
-      size: attackProfile.projectileSize,
-      sourceType: DamageSourceType.ability,
-      visual: ProjectileVisual.fireball,
-    );
-  }
-
-  void _knightAttack() {
-    final target = _findNearestEnemyInRange(
-      onlyVisibleOnScreen: false,
-      range: attackProfile.range,
-    );
-    if (target == null) return;
-
-    final (dmg, isCrit) = _rollDamage();
-    _spawnMeleeSwing(
-      radius: attackProfile.meleeRadius,
-      damage: dmg,
-      isCrit: isCrit,
-      color: const Color(0xFF81C784),
-      maxAlpha: 0.45,
-    );
-
-    final dir = (target.position - position);
-    if (dir.length2 <= 0.0001) return;
-
-    final waveDamage = (dmg * attackProfile.waveDamageMultiplier).round().clamp(1, 999999);
-    final waveBuff = buffs.getBuffAs<KnightWavePierceBuff>('buff_knight_wave_pierce');
-    final wavePierce = waveBuff?.pierceCount ?? 0;
-    _shootProjectile(
-      direction: dir,
-      damage: waveDamage,
-      isCrit: false,
-      speed: attackProfile.projectileSpeed,
-      color: attackProfile.projectileColor,
-      size: attackProfile.projectileSize,
-      sourceType: DamageSourceType.melee,
-      pierceOverride: wavePierce,
-      ricochetOverride: 0,
-    );
-  }
-
-  void _ninjaAttack() {
-    final target = _findNearestEnemyInRange(
-      onlyVisibleOnScreen: false,
-      range: attackProfile.range,
-    );
-    if (target == null) return;
-
-    final (dmg, isCrit) = _rollDamage();
-    _spawnMeleeSwing(
-      radius: attackProfile.meleeRadius,
-      damage: dmg,
-      isCrit: isCrit,
-      color: const Color(0xFFEF5350),
-      maxAlpha: 0.55,
-    );
-
-    if (attackProfile.ninjaHits <= 1) return;
-
-    game.worldMap.add(
-      TimerComponent(
-        period: attackProfile.ninjaHitDelaySec,
-        repeat: false,
-        onTick: () {
-          _spawnMeleeSwing(
-            radius: attackProfile.meleeRadius * 0.9,
-            damage: (dmg * 0.8).round().clamp(1, 999999),
-            isCrit: false,
-            color: const Color(0xFFFF7043),
-            maxAlpha: 0.5,
-          );
-        },
-      ),
-    );
-  }
-
-  void _spawnMeleeSwing({
-    required double radius,
-    required int damage,
-    required bool isCrit,
-    Color color = const Color(0xFF90CAF9),
-    double maxAlpha = 0.32,
-    bool drawOutline = true,
-  }) {
-    final swing = MeleeSwing(
-      owner: this,
-      position: position.clone(),
-      radius: radius,
-      damage: damage,
-      isCrit: isCrit,
-      color: color,
-      maxAlpha: maxAlpha,
-      drawOutline: drawOutline,
-    );
-
-    game.worldMap.add(swing);
-  }
-
-  void _shootProjectile({
+  @override
+  void shootProjectile({
     required Vector2 direction,
     required int damage,
     required bool isCrit,
@@ -314,6 +224,9 @@ class PlayerComponent extends PositionComponent
     int? pierceOverride,
     int? ricochetOverride,
     double? ricochetMultiplierOverride,
+    Sprite? spriteOverride,
+    SpriteAnimation? spriteAnimationOverride,
+    double? angleOffset,
   }) {
     final (pierceCount, ricochetBounces, ricochetMultiplier) = _projectileModifiers();
     final finalPierce = pierceOverride ?? pierceCount;
@@ -331,6 +244,9 @@ class PlayerComponent extends PositionComponent
       paintColor: color,
       sizeOverride: Vector2(size.width, size.height),
       visual: visual,
+      sprite: spriteOverride,
+      spriteAnimation: spriteAnimationOverride,
+      angleOffset: angleOffset ?? 0.0,
       pierceCount: finalPierce,
       ricochetBounces: finalRicochet,
       ricochetDamageMultiplier: finalRicochetMult,
@@ -350,7 +266,6 @@ class PlayerComponent extends PositionComponent
     return (pierceCount, ricochetBounces, ricochetMultiplier);
   }
 
-
   void _updateRegen(double dt) {
     var changed = false;
     if (stats.regenMana(dt)) {
@@ -363,8 +278,10 @@ class PlayerComponent extends PositionComponent
       game.notifyPlayerStatsChanged();
     }
   }
+
   @override
   void render(Canvas canvas) {
+    if (_sprite != null) return;
     super.render(canvas);
 
     final base = _heroBaseColor();
@@ -385,6 +302,107 @@ class PlayerComponent extends PositionComponent
     canvas.drawRect(rect, border);
   }
 
+  void _applyVisuals(HeroVisuals visuals) {
+    _sprite = visuals.sprite;
+    _idleAnimation = visuals.idle;
+    _walkAnimation = visuals.walk;
+    _attackAnimation = visuals.attack;
+    _hurtAnimation = visuals.hurt;
+    _deathAnimation = visuals.death;
+    _spriteScale = visuals.spriteScale;
+    _attackAnimDurationSec = visuals.attackDurationSec;
+    _hurtAnimDurationSec = visuals.hurtDurationSec;
+    _deathAnimDurationSec = visuals.deathDurationSec;
+
+    _arrowSprite = visuals.arrowProjectile?.sprite;
+    _arrowSpriteSize = visuals.arrowProjectile?.renderSize;
+    _fireballSprite = visuals.fireballProjectile?.sprite;
+    _fireballAnimation = visuals.fireballProjectile?.animation;
+    _fireballSpriteSize = visuals.fireballProjectile?.renderSize;
+
+    add(visuals.sprite);
+  }
+
+  void _updateSpriteAnimation(bool isMoving, Vector2 dir) {
+    final sprite = _sprite;
+    if (sprite == null) return;
+
+    if (_attackAnimTimeLeft <= 0 &&
+        _hurtAnimTimeLeft <= 0 &&
+        _faceOverrideTimeLeft <= 0 &&
+        isMoving) {
+      if (dir.x < -0.01) {
+        _facingLeft = true;
+      } else if (dir.x > 0.01) {
+        _facingLeft = false;
+      }
+    }
+
+    final nextAnimation = (_deathAnimTimeLeft > 0 && _deathAnimation != null)
+        ? _deathAnimation
+        : (_hurtAnimTimeLeft > 0 && _hurtAnimation != null)
+            ? _hurtAnimation
+            : (_attackAnimTimeLeft > 0 && _attackAnimation != null)
+                ? _attackAnimation
+                : (isMoving ? _walkAnimation : _idleAnimation);
+    if (nextAnimation != null && sprite.animation != nextAnimation) {
+      sprite.animation = nextAnimation;
+    }
+
+    final dirScale = _facingLeft ? -1.0 : 1.0;
+    sprite.scale = Vector2(dirScale * _spriteScale, _spriteScale);
+  }
+
+  @override
+  void triggerAttackAnimation() {
+    if (_attackAnimation == null) return;
+    _attackAnimTimeLeft = _attackAnimDurationSec;
+  }
+
+  @override
+  void setFacingForAttack(Vector2 dir) {
+    if (dir.length2 <= 0.0001) return;
+    _facingLeft = dir.x < 0;
+    _faceOverrideTimeLeft = _attackAnimDurationSec;
+  }
+
+  @override
+  double attackImpactDelaySec() {
+    return max(0.02, _attackAnimDurationSec * 0.85);
+  }
+
+  @override
+  void scheduleAttackImpact({
+    required double delay,
+    required void Function() action,
+  }) {
+    game.worldMap.add(
+      TimerComponent(
+        period: delay,
+        repeat: false,
+        onTick: () {
+          if (_isDead || isRemoving) return;
+          action();
+        },
+      ),
+    );
+  }
+
+  @override
+  void addWorldComponent(Component component) {
+    game.worldMap.add(component);
+  }
+
+  @override
+  void notifyStatsChanged() {
+    game.notifyPlayerStatsChanged();
+  }
+
+  @override
+  void setAttackTimer(double value) {
+    _attackTimer = value;
+  }
+
   void takeDamage(
     int rawDamage, {
     PositionComponent? attacker,
@@ -395,7 +413,8 @@ class PlayerComponent extends PositionComponent
     // Шанс уклониться от удара.
     final evade = stats.evasionChance.clamp(0.0, 0.80);
     if (evade > 0 && game.rng.nextDouble() < evade) {
-      final evadeBuff = buffs.getBuffAs<NinjaEvasionStrikeBuff>('buff_ninja_evasion_strike');
+    final evadeBuff =
+        buffs.getBuffAs<SamuraiEvasionStrikeBuff>('buff_samurai_evasion_strike');
       if (evadeBuff != null) {
         _forceCritNext = true;
       }
@@ -431,6 +450,7 @@ class PlayerComponent extends PositionComponent
     );
 
     stats.hp -= dmg;
+    _hurtAnimTimeLeft = _hurtAnimDurationSec;
 
     // hit-stop
     game.requestHitStop(0.018);
@@ -468,24 +488,24 @@ class PlayerComponent extends PositionComponent
     game.notifyPlayerStatsChanged();
 
     _hitbox.collisionType = CollisionType.inactive;
+    _deathAnimTimeLeft = _deathAnimDurationSec;
+    if (_sprite != null && _deathAnimation != null) {
+      _sprite!.animation = _deathAnimation;
+    }
 
-    Future<void>.microtask(() {
-      if (!isRemoving) removeFromParent();
-    });
-
-    game.onPlayerDied();
+    game.worldMap.add(
+      TimerComponent(
+        period: _deathAnimDurationSec,
+        repeat: false,
+        onTick: () {
+          if (!isRemoving) removeFromParent();
+          game.onPlayerDied();
+        },
+      ),
+    );
   }
 
   Color _heroBaseColor() {
-    switch (heroType) {
-      case HeroType.ranger:
-        return _baseColorRanger;
-      case HeroType.knight:
-        return _baseColorKnight;
-      case HeroType.mage:
-        return _baseColorMage;
-      case HeroType.ninja:
-        return _baseColorNinja;
-    }
+    return hero.visuals.baseColor;
   }
 }

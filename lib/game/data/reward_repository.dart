@@ -5,6 +5,7 @@ import 'package:pixel_clash/game/components/combat/rarity.dart';
 import 'package:pixel_clash/game/data/app_database.dart';
 import 'package:pixel_clash/game/data/reward_seeder.dart';
 import 'package:pixel_clash/game/localization/l10n.dart';
+import 'package:pixel_clash/game/components/player/hero_definition.dart';
 import 'package:pixel_clash/game/components/player/hero_type.dart';
 import 'package:pixel_clash/game/rewards/icon_registry.dart';
 import 'package:pixel_clash/game/rewards/player_build_state.dart';
@@ -294,12 +295,7 @@ class RewardRepository {
 
   String? _heroKey(HeroType? type) {
     if (type == null) return null;
-    return switch (type) {
-      HeroType.ranger => 'ranger',
-      HeroType.knight => 'knight',
-      HeroType.mage => 'mage',
-      HeroType.ninja => 'ninja',
-    };
+    return HeroCatalog.idForType(type);
   }
 
   bool _matchesHero(RewardDbRow row, String heroKey) {
@@ -307,7 +303,8 @@ class RewardRepository {
     final hero = params['hero'];
     if (hero == null) return true;
     if (hero is! String) return false;
-    return hero == heroKey;
+    if (hero == heroKey) return true;
+    return HeroCatalog.isAlias(hero, heroKey);
   }
 
   int? _maxLevelFromParams(Map<String, Object?> params) {

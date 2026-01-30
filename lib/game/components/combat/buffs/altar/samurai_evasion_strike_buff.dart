@@ -3,22 +3,17 @@ import 'package:pixel_clash/game/components/combat/buffs/altar/level_based_buff.
 import 'package:pixel_clash/game/components/combat/combat_event.dart';
 import 'package:pixel_clash/game/components/player/player_component.dart';
 
-/// Тройной удар: шанс и урон третьего удара.
-class NinjaTripleStrikeBuff extends LevelBasedBuff {
-  NinjaTripleStrikeBuff({
+/// РЈРєР»РѕРЅРµРЅРёРµ-СѓРґР°СЂ: СѓСЃРёР»РёРІР°РµС‚ РєСЂРёС‚ РїРѕСЃР»Рµ СѓСЃРїРµС€РЅРѕРіРѕ СѓРІРѕСЂРѕС‚Р°.
+class SamuraiEvasionStrikeBuff extends LevelBasedBuff {
+  SamuraiEvasionStrikeBuff({
     required super.rarity,
     required super.maxLevel,
     required super.levels,
-  }) : super(id: 'buff_ninja_triple_strike');
+  }) : super(id: 'buff_samurai_evasion_strike');
 
-  double get thirdHitChance {
+  double get critBonusMultiplier {
     final v = levelValues();
-    return altarNum(v, 'thirdHitChance', 0.0);
-  }
-
-  double get thirdHitDamageMultiplier {
-    final v = levelValues();
-    return altarNum(v, 'thirdHitDamageMultiplier', 0.8);
+    return altarNum(v, 'critBonusMultiplier', 0.0);
   }
 
   @override

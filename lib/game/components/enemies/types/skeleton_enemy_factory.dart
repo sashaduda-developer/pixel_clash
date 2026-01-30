@@ -1,9 +1,8 @@
 import 'package:flame/components.dart';
 import 'package:pixel_clash/game/components/enemies/enemy_component.dart';
 import 'package:pixel_clash/game/components/enemies/enemy_factory.dart';
-import 'package:pixel_clash/game/components/enemies/types/skeleton_enemy.dart';
+import 'package:pixel_clash/game/components/enemies/types/skeleton_enemies.dart';
 
-/// Фабрика скелетов (обычный/элитный).
 class SkeletonEnemyFactory implements EnemyFactory {
   @override
   String get id => 'skeleton';

@@ -18,7 +18,7 @@ class RewardSeeder {
   ///
   /// v5: принудительное обновление пула наград (книги в сундуках).
   /// v6: новые предметы сундука.
-  static const int currentVersion = 7;
+  static const int currentVersion = 8;
 
   static Future<void> ensureSeeded(AppDatabase db) async {
     // ===== Само-ремонт данных =====
@@ -547,13 +547,13 @@ class RewardSeeder {
         ],
       ),
       _altarSkillRow(
-        id: 'buff_ninja_triple_strike',
+        id: 'buff_samurai_triple_strike',
         rarity: 'rare',
         kind: 'buff',
-        titleKey: 'altar_ninja_triple_strike_title',
-        descKey: 'altar_ninja_triple_strike_desc',
+        titleKey: 'altar_samurai_triple_strike_title',
+        descKey: 'altar_samurai_triple_strike_desc',
         iconKey: 'stat',
-        hero: 'ninja',
+        hero: 'samurai',
         maxLevel: 2,
         trigger: {
           'kind': 'passive',
@@ -573,13 +573,13 @@ class RewardSeeder {
         ],
       ),
       _altarSkillRow(
-        id: 'buff_ninja_evasion_strike',
+        id: 'buff_samurai_evasion_strike',
         rarity: 'rare',
         kind: 'buff',
-        titleKey: 'altar_ninja_evasion_strike_title',
-        descKey: 'altar_ninja_evasion_strike_desc',
+        titleKey: 'altar_samurai_evasion_strike_title',
+        descKey: 'altar_samurai_evasion_strike_desc',
         iconKey: 'stat',
-        hero: 'ninja',
+        hero: 'samurai',
         maxLevel: 2,
         trigger: {
           'kind': 'passive',
