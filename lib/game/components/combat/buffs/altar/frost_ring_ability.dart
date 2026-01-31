@@ -24,7 +24,10 @@ class FrostRingAbility extends LevelBasedBuff implements ActiveAbility {
   double get cooldownDuration => _cooldownDuration > 0 ? _cooldownDuration : _cooldownSec();
 
   @override
-  double get manaCost => 28.0;
+  double get manaCost {
+    final v = levelValues();
+    return altarNum(v, 'manaCost', 28.0);
+  }
 
   @override
   void onUpdate(PlayerComponent owner, double dt) {

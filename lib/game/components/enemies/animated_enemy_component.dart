@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 import 'package:pixel_clash/game/components/enemies/enemy_component.dart';
+import 'package:pixel_clash/game/render/pixel_perfect.dart';
 
 class AnimatedEnemyConfig {
   const AnimatedEnemyConfig({
@@ -146,6 +147,7 @@ class AnimatedEnemyComponent extends EnemyComponent {
       size: Vector2(config.frameSize.width, config.frameSize.height),
       anchor: Anchor.center,
       position: size / 2,
+      paint: pixelPaint(),
     );
     _sprite!.scale = Vector2(config.spriteScale, config.spriteScale);
     add(_sprite!);

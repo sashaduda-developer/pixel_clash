@@ -17,8 +17,8 @@ abstract class GameConstants {
   static const double baseEliteChance = 0.04; // базовый шанс элитных без предметов
 
   // Размер карты мира (позже будет тайлсет/генерация).
-  static const double mapWidth = 4000;
-  static const double mapHeight = 2500;
+  static const double mapWidth = 4032;
+  static const double mapHeight = 2496;
 
   // Как далеко от игрока спавним мобов.
   static const double enemySpawnMinDist = 520;
@@ -29,4 +29,5 @@ abstract class GameConstants {
   static const double interactableMinDistFromPlayer = 220;
   static const double interactableMinDistBetween = 140;
   static const int interactableSpawnAttempts = 60;
+  static const double keyMinDistanceBetween = 900;
 }

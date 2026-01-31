@@ -67,6 +67,7 @@ class PlayerComponent extends PositionComponent
   double _hurtAnimTimeLeft = 0;
   double _deathAnimTimeLeft = 0;
   double _faceOverrideTimeLeft = 0;
+  double _invulnerableLeft = 0;
   double _spriteScale = 1.0;
   double _attackAnimDurationSec = 0.0;
   double _hurtAnimDurationSec = 0.0;
@@ -142,6 +143,7 @@ class PlayerComponent extends PositionComponent
     _hurtAnimTimeLeft = max(0, _hurtAnimTimeLeft - dt);
     _deathAnimTimeLeft = max(0, _deathAnimTimeLeft - dt);
     _faceOverrideTimeLeft = max(0, _faceOverrideTimeLeft - dt);
+    _invulnerableLeft = max(0, _invulnerableLeft - dt);
 
     // Апдейт баффов после перемещения и атаки.
     buffs.update(dt);
@@ -431,12 +433,21 @@ class PlayerComponent extends PositionComponent
       return;
     }
 
+    if (_invulnerableLeft > 0) return;
+
     var dmg = max(1, rawDamage - stats.armor);
     dmg = buffs.modifyIncomingDamage(
       dmg,
       sourceType: sourceType,
       attacker: attacker,
     );
+    if (sourceType == DamageSourceType.melee) {
+      if (heroType == HeroType.samurai) {
+        dmg = max(1, (dmg * 0.88).round());
+      } else if (heroType == HeroType.knight) {
+        dmg = max(1, (dmg * 0.97).round());
+      }
+    }
     if (dmg <= 0) return;
 
     // Пробрасываем атакующего для отражения/реакций баффов.
@@ -507,5 +518,10 @@ class PlayerComponent extends PositionComponent
 
   Color _heroBaseColor() {
     return hero.visuals.baseColor;
+  }
+
+  void grantInvulnerability(double durationSec) {
+    if (durationSec <= 0) return;
+    _invulnerableLeft = max(_invulnerableLeft, durationSec);
   }
 }

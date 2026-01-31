@@ -190,7 +190,7 @@ class KnightAttackBehavior extends PlayerAttackBehavior {
           damage: dmg,
           isCrit: isCrit,
           slashColor: const Color(0xFFFFF3E0),
-          slashLength: 44,
+          slashLength: 54,
           slashThickness: 5,
           slashMaxAlpha: 0.85,
         );
@@ -316,7 +316,7 @@ class SamuraiAttackBehavior extends PlayerAttackBehavior {
       damage: finalDamage,
       isCrit: finalCrit,
       slashColor: slashColor,
-      slashLength: 40,
+      slashLength: 50,
       slashThickness: 5,
       slashMaxAlpha: 0.75,
     );

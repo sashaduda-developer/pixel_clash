@@ -13,18 +13,18 @@ class XpSystem extends Component {
     required this.onLevelUp,
   });
 
-  final void Function(int currentXp, int xpToNext) onXpChanged;
+  final void Function(double currentXp, int xpToNext) onXpChanged;
   final void Function(int level) onLevelChanged;
 
   /// Вызывается, когда произошёл level up.
   final void Function(int newLevel) onLevelUp;
 
   int _level = 1;
-  int _xp = 0;
+  double _xp = 0;
   int _xpToNext = 12;
 
   int get level => _level;
-  int get xp => _xp;
+  double get xp => _xp;
   int get xpToNext => _xpToNext;
 
   void reset() {
@@ -35,10 +35,10 @@ class XpSystem extends Component {
     onXpChanged(_xp, _xpToNext);
   }
 
-  void addXp(int value) {
+  void addXp(num value) {
     if (value <= 0) return;
 
-    _xp += value;
+    _xp += value.toDouble();
 
     // Может быть несколько уровней за раз, поэтому while.
     while (_xp >= _xpToNext) {
@@ -56,8 +56,9 @@ class XpSystem extends Component {
   }
 
   int _calcNextXp(int level) {
-    // Простая формула:
-    // L2: 16, L3: 20, L4: 24...
-    return 12 + (level - 1) * 4;
+    // Slightly super-linear curve to slow late-game leveling.
+    final l = level > 1 ? level - 1 : 0;
+    final quad = (l * l * 0.6).round();
+    return 12 + l * 5 + quad;
   }
 }

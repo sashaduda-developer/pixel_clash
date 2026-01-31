@@ -7,6 +7,7 @@ import 'package:pixel_clash/game/components/combat/combat_event.dart';
 import 'package:pixel_clash/game/components/combat/damageable.dart';
 import 'package:pixel_clash/game/components/enemies/enemy_component.dart';
 import 'package:pixel_clash/game/components/player/player_component.dart';
+import 'package:pixel_clash/game/render/pixel_perfect.dart';
 
 /// Снаряд рейнджера.
 /// Визуальный тип снаряда (без привязки к логике урона).
@@ -96,6 +97,7 @@ class ProjectileArrow extends PositionComponent with CollisionCallbacks {
         size: size.clone(),
         anchor: Anchor.center,
         position: size / 2,
+        paint: pixelPaint(),
       );
       add(_spriteAnimationComponent!);
     } else if (sprite != null) {
@@ -104,6 +106,7 @@ class ProjectileArrow extends PositionComponent with CollisionCallbacks {
         size: size.clone(),
         anchor: Anchor.center,
         position: size / 2,
+        paint: pixelPaint(),
       );
       add(_spriteComponent!);
     }

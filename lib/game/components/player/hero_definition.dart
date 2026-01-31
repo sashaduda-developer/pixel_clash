@@ -42,7 +42,7 @@ class HeroCatalog {
       subtitleKey: 'hero_ranger_subtitle',
       statsFactory: _rangerStats,
       attackProfile: const AttackProfile(
-        range: 420,
+        range: 340,
         meleeRadius: 0,
         projectileSpeed: 520,
         projectileColor: Color(0xFFFFD54F),
@@ -73,8 +73,8 @@ class HeroCatalog {
       subtitleKey: 'hero_knight_subtitle',
       statsFactory: _knightStats,
       attackProfile: const AttackProfile(
-        range: 100,
-        meleeRadius: 80,
+        range: 120,
+        meleeRadius: 95,
         projectileSpeed: 420,
         projectileColor: Color(0xFFFFB74D),
         projectileSize: Size(26, 6),
@@ -100,7 +100,7 @@ class HeroCatalog {
       subtitleKey: 'hero_mage_subtitle',
       statsFactory: _mageStats,
       attackProfile: const AttackProfile(
-        range: 480,
+        range: 280,
         meleeRadius: 0,
         projectileSpeed: 360,
         projectileColor: Color(0xFFFF8A65),
@@ -135,8 +135,8 @@ class HeroCatalog {
       subtitleKey: 'hero_samurai_subtitle',
       statsFactory: _samuraiStats,
       attackProfile: const AttackProfile(
-        range: 100,
-        meleeRadius: 80,
+        range: 120,
+        meleeRadius: 95,
         projectileSpeed: 0,
         projectileColor: Color(0xFFFFFFFF),
         projectileSize: Size(0, 0),
@@ -209,7 +209,7 @@ PlayerStats _rangerStats() {
     moveSpeed: 190,
     maxMana: 100,
     mana: 100,
-    manaRegen: 2.2,
+    manaRegen: 1.9,
     hpRegen: 0.0,
     evasionChance: 0.0,
     critChance: 0.15,
@@ -219,12 +219,12 @@ PlayerStats _rangerStats() {
 
 PlayerStats _knightStats() {
   return PlayerStats(
-    maxHp: 110,
-    hp: 110,
+    maxHp: 105,
+    hp: 105,
     armor: 2,
-    damage: 14,
-    attackSpeed: 0.9,
-    moveSpeed: 165,
+    damage: 11,
+    attackSpeed: 0.85,
+    moveSpeed: 170,
     maxMana: 90,
     mana: 90,
     manaRegen: 2.5,
@@ -255,17 +255,17 @@ PlayerStats _mageStats() {
 
 PlayerStats _samuraiStats() {
   return PlayerStats(
-    maxHp: 65,
-    hp: 65,
-    armor: 0,
+    maxHp: 90,
+    hp: 90,
+    armor: 2,
     damage: 9,
     attackSpeed: 1.45,
-    moveSpeed: 215,
+    moveSpeed: 220,
     maxMana: 80,
     mana: 80,
-    manaRegen: 2.4,
+    manaRegen: 2.0,
     hpRegen: 0.0,
-    evasionChance: 0.10,
+    evasionChance: 0.16,
     critChance: 0.18,
     critMultiplier: 1.7,
   );

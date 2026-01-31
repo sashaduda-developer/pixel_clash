@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 import 'package:pixel_clash/game/pixel_clash_game.dart';
+import 'package:pixel_clash/game/render/pixel_perfect.dart';
 
 class AnimationAssetConfig {
   const AnimationAssetConfig({
@@ -96,6 +97,7 @@ class HeroVisualConfig {
       size: Vector2.all(spriteSize),
       anchor: Anchor.center,
       position: componentSize / 2,
+      paint: pixelPaint(),
     );
 
     final arrowAssets = await _loadProjectileAssets(game, arrowProjectile);
@@ -178,6 +180,7 @@ Future<ProjectileAssets?> _loadProjectileAssets(
           srcPosition: Vector2.zero(),
           srcSize: Vector2(frameSize.width, frameSize.height),
         );
+  sprite.paint = pixelPaint();
 
   SpriteAnimation? animation;
   if (config.buildAnimation && frameSize != null && config.frames > 0) {

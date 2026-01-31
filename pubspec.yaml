@@ -12,6 +12,7 @@ dependencies:
 
   # Flame - игровой движок
   flame: 1.34.0
+  flame_tiled: ^3.0.9
 
   # Для математических утилит/векторов (Flame использует Vector2)
   # (не обязательно добавлять отдельно, но пусть будет явно)
@@ -43,3 +44,6 @@ flutter:
     - assets/images/enemies/Greatsword-Skeleton/
     - assets/images/enemies/Greatsword-Skeleton-Elite/
     - assets/images/enemies/Lancer/
+    - assets/maps/
+    - assets/maps/tiles/
+    - assets/maps/tilesets/

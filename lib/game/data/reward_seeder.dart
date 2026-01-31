@@ -18,7 +18,7 @@ class RewardSeeder {
   ///
   /// v5: принудительное обновление пула наград (книги в сундуках).
   /// v6: новые предметы сундука.
-  static const int currentVersion = 8;
+  static const int currentVersion = 11;
 
   static Future<void> ensureSeeded(AppDatabase db) async {
     // ===== Само-ремонт данных =====
@@ -33,7 +33,7 @@ class RewardSeeder {
 
     final rows = <RewardDefinitionsCompanion>[
       // ===========================
-      // LEVEL UP — только СТАТЫ
+      // LEVEL UP - stats only
       // ===========================
       ..._statVariants(
         source: 'levelUp',
@@ -42,10 +42,10 @@ class RewardSeeder {
         descKey: 'upg_hp_desc',
         stat: 'hp',
         iconKey: 'stat',
-        common: 10,
-        rare: 20,
-        epic: 35,
-        legendary: 50,
+        common: 12,
+        rare: 24,
+        epic: 40,
+        legendary: 60,
       ),
       ..._statVariants(
         source: 'levelUp',
@@ -55,9 +55,9 @@ class RewardSeeder {
         stat: 'damage',
         iconKey: 'stat',
         common: 2,
-        rare: 4,
-        epic: 6,
-        legendary: 8,
+        rare: 3,
+        epic: 5,
+        legendary: 7,
       ),
       ..._statVariants(
         source: 'levelUp',
@@ -66,10 +66,10 @@ class RewardSeeder {
         descKey: 'upg_as_desc',
         stat: 'attackSpeed',
         iconKey: 'stat',
-        common: 0.10,
-        rare: 0.15,
-        epic: 0.20,
-        legendary: 0.25,
+        common: 0.08,
+        rare: 0.12,
+        epic: 0.16,
+        legendary: 0.20,
       ),
       ..._statVariants(
         source: 'levelUp',
@@ -90,9 +90,9 @@ class RewardSeeder {
         descKey: 'upg_crit_desc',
         stat: 'critChance',
         iconKey: 'bolt',
-        common: 0.03,
-        rare: 0.05,
-        epic: 0.07,
+        common: 0.035,
+        rare: 0.055,
+        epic: 0.075,
         legendary: 0.10,
       ),
       ..._statVariants(
@@ -114,50 +114,13 @@ class RewardSeeder {
         descKey: 'upg_evasion_desc',
         stat: 'evasion',
         iconKey: 'stat',
-        common: 0.02,
-        rare: 0.03,
-        epic: 0.04,
-        legendary: 0.06,
+        common: 0.025,
+        rare: 0.035,
+        epic: 0.045,
+        legendary: 0.065,
       ),
-      ..._statVariants(
-        source: 'levelUp',
-        id: 'stat_maxMana',
-        titleKey: 'upg_mana_title',
-        descKey: 'upg_mana_desc',
-        stat: 'maxMana',
-        iconKey: 'stat',
-        common: 15,
-        rare: 25,
-        epic: 40,
-        legendary: 60,
-      ),
-      ..._statVariants(
-        source: 'levelUp',
-        id: 'stat_manaRegen',
-        titleKey: 'upg_mana_regen_title',
-        descKey: 'upg_mana_regen_desc',
-        stat: 'manaRegen',
-        iconKey: 'stat',
-        common: 0.6,
-        rare: 0.9,
-        epic: 1.2,
-        legendary: 1.6,
-      ),
-      ..._statVariants(
-        source: 'levelUp',
-        id: 'stat_hpRegen',
-        titleKey: 'upg_hp_regen_title',
-        descKey: 'upg_hp_regen_desc',
-        stat: 'hpRegen',
-        iconKey: 'stat',
-        common: 0.15,
-        rare: 0.30,
-        epic: 0.45,
-        legendary: 0.70,
-      ),
-
       // ===========================
-      // CHEST — предметы
+      // CHEST - items
       // ===========================
       ..._itemVariantsMap(
         source: 'chest',
@@ -606,11 +569,11 @@ class RewardSeeder {
         levels: [
           {
             'level': 1,
-            'values': {'damageMultiplier': 1.15, 'manaCost': 3.0},
+            'values': {'damageMultiplier': 1.18, 'manaCost': 6.0},
           },
           {
             'level': 2,
-            'values': {'damageMultiplier': 1.25, 'manaCost': 5.0},
+            'values': {'damageMultiplier': 1.30, 'manaCost': 9.0},
           },
         ],
       ),
@@ -863,7 +826,7 @@ class RewardSeeder {
             'level': 1,
             'values': {
               'cooldownSec': 14.0,
-              'manaCost': 28.0,
+              'manaCost': 32.0,
               'radius': 2.6,
               'freezeSec': 1.0,
               'damagePctBase': 0.60
@@ -873,7 +836,7 @@ class RewardSeeder {
             'level': 2,
             'values': {
               'cooldownSec': 12.0,
-              'manaCost': 28.0,
+              'manaCost': 30.0,
               'radius': 3.0,
               'freezeSec': 1.3,
               'damagePctBase': 0.75
@@ -902,7 +865,7 @@ class RewardSeeder {
             'level': 1,
             'values': {
               'cooldownSec': 18.0,
-              'manaCost': 32.0,
+              'manaCost': 38.0,
               'radius': 3.2,
               'stunSec': 1.2,
               'damagePctBase': 0.90
@@ -912,7 +875,7 @@ class RewardSeeder {
             'level': 2,
             'values': {
               'cooldownSec': 16.0,
-              'manaCost': 32.0,
+              'manaCost': 36.0,
               'radius': 3.6,
               'stunSec': 1.6,
               'damagePctBase': 1.10
@@ -937,11 +900,11 @@ class RewardSeeder {
         levels: [
           {
             'level': 1,
-            'values': {'intervalSec': 2.2, 'targets': 2, 'radius': 3.0, 'damagePctBase': 0.85}
+            'values': {'intervalSec': 2.8, 'targets': 1, 'radius': 2.4, 'damagePctBase': 0.60}
           },
           {
             'level': 2,
-            'values': {'intervalSec': 2.0, 'targets': 3, 'radius': 3.0, 'damagePctBase': 0.95}
+            'values': {'intervalSec': 2.3, 'targets': 2, 'radius': 2.7, 'damagePctBase': 0.70}
           },
         ],
       ),
@@ -964,7 +927,7 @@ class RewardSeeder {
             'level': 1,
             'values': {
               'cooldownSec': 24.0,
-              'manaCost': 26.0,
+              'manaCost': 32.0,
               'radius': 5.0,
               'slowPct': 0.45,
               'durationSec': 2.0
@@ -974,7 +937,7 @@ class RewardSeeder {
             'level': 2,
             'values': {
               'cooldownSec': 21.0,
-              'manaCost': 26.0,
+              'manaCost': 30.0,
               'radius': 5.0,
               'slowPct': 0.55,
               'durationSec': 2.4

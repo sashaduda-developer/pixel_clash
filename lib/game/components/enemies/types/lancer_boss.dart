@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:pixel_clash/game/components/combat/combat_event.dart';
 import 'package:pixel_clash/game/components/enemies/enemy_component.dart';
 import 'package:pixel_clash/game/components/player/player_component.dart';
+import 'package:pixel_clash/game/render/pixel_perfect.dart';
 import 'package:pixel_clash/game/ui/hit_particles.dart';
 
 enum _LancerAttackAnim {
@@ -208,6 +209,7 @@ class LancerBossComponent extends EnemyComponent {
       size: Vector2(_frameSize.width, _frameSize.height),
       anchor: Anchor.center,
       position: size / 2,
+      paint: pixelPaint(),
     );
     _sprite!.scale = Vector2(_spriteScale, _spriteScale);
     add(_sprite!);

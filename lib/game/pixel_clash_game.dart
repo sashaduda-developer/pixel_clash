@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:ui' as ui;
 
+import 'package:flame/camera.dart' show FixedResolutionViewport;
 import 'package:flame/components.dart' hide Timer;
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
@@ -15,6 +17,7 @@ import 'package:pixel_clash/game/components/interactables/altar_component.dart';
 import 'package:pixel_clash/game/components/interactables/chest_component.dart';
 import 'package:pixel_clash/game/components/interactables/key_component.dart';
 import 'package:pixel_clash/game/components/interactables/portal_component.dart';
+import 'package:pixel_clash/game/components/interactables/potion_component.dart';
 import 'package:pixel_clash/game/components/player/hero_definition.dart';
 import 'package:pixel_clash/game/components/player/player_component.dart';
 import 'package:pixel_clash/game/components/systems/biome_timer.dart';
@@ -23,6 +26,7 @@ import 'package:pixel_clash/game/components/systems/score_system.dart';
 import 'package:pixel_clash/game/components/systems/threat_system.dart';
 import 'package:pixel_clash/game/components/systems/xp_system.dart';
 import 'package:pixel_clash/game/components/world/world_map.dart';
+import 'package:pixel_clash/game/components/xp/xp_crystal_component.dart';
 import 'package:pixel_clash/game/config/game_constants.dart';
 import 'package:pixel_clash/game/data/app_database.dart';
 import 'package:pixel_clash/game/data/reward_repository.dart';
@@ -35,11 +39,14 @@ import 'package:pixel_clash/game/rewards/reward_definition.dart';
 import 'package:pixel_clash/game/rewards/upgrade_registry.dart';
 import 'package:pixel_clash/game/run/run_modifiers.dart';
 import 'package:pixel_clash/game/ui/overlays.dart';
+import 'package:tiled/tiled.dart';
 
 class PixelClashGame extends FlameGame with HasCollisionDetection {
   PixelClashGame();
 
   static const int requiredKeys = 3;
+  static const Set<int> _mapChestTileIds = {21, 28};
+  static const Set<int> _mapAltarTileIds = {42, 43, 49, 50};
 
   final int seed = DateTime.now().millisecondsSinceEpoch;
   late final Random rng = Random(seed);
@@ -47,6 +54,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
 
   late final WorldMap worldMap;
   late final CameraComponent cam;
+  bool _cameraReady = false;
 
   PlayerComponent? player;
   PortalComponent? _portal;
@@ -155,6 +163,8 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
       height: GameConstants.cameraHeight,
     );
     add(cam);
+    _cameraReady = true;
+    _applyPixelPerfectCamera();
 
     joystick = JoystickComponent(
       knob: CircleComponent(
@@ -207,12 +217,84 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
 
     _hitStopCooldown = max(0, _hitStopCooldown - dt);
 
-    if (_shakeLeft > 0) {
+    if (_shakeLeft > 0 && _cameraReady) {
       _shakeLeft -= dt;
       final dx = (rng.nextDouble() * 2 - 1) * _shakeStrength;
       final dy = (rng.nextDouble() * 2 - 1) * _shakeStrength;
       cam.viewfinder.position.add(Vector2(dx, dy));
     }
+    _applyPixelPerfectCamera();
+  }
+
+  void _applyPixelPerfectCamera() {
+    if (!_cameraReady) return;
+    _snapCameraZoomToTileGrid();
+    _snapCameraPosition();
+  }
+
+  void _snapCameraZoomToTileGrid() {
+    final viewportScale = _viewportScale();
+    if (viewportScale <= 0) return;
+
+    final tileSize = WorldMap.tileSize.x;
+    if (tileSize <= 0) return;
+
+    final dpr = ui.PlatformDispatcher.instance.views.first.devicePixelRatio;
+    final scale = viewportScale * cam.viewfinder.zoom;
+    final tilePx = tileSize * scale * dpr;
+    if (tilePx <= 0) return;
+
+    final snappedTilePx = tilePx.roundToDouble().clamp(1.0, double.infinity);
+    final snappedScale = snappedTilePx / (tileSize * dpr);
+    final snappedZoom = snappedScale / viewportScale;
+
+    if ((snappedZoom - cam.viewfinder.zoom).abs() > 0.0001) {
+      cam.viewfinder.zoom = snappedZoom;
+    }
+  }
+
+  void _snapCameraPosition() {
+    final viewportScale = _viewportScale();
+    if (viewportScale <= 0) return;
+
+    final scale = viewportScale * cam.viewfinder.zoom;
+    if (scale <= 0) return;
+
+    final anchor = cam.viewfinder.anchor;
+    final anchorPos = Vector2(
+      cam.viewport.virtualSize.x * anchor.x,
+      cam.viewport.virtualSize.y * anchor.y,
+    );
+
+    final viewport = cam.viewport;
+    final viewportOffset = Vector2(
+      viewport.position.x - viewport.anchor.x * viewport.size.x,
+      viewport.position.y - viewport.anchor.y * viewport.size.y,
+    );
+
+    final offset = viewportOffset + anchorPos * viewportScale;
+    final pos = cam.viewfinder.position;
+    final translationX = offset.x - pos.x * scale;
+    final translationY = offset.y - pos.y * scale;
+
+    final dpr = ui.PlatformDispatcher.instance.views.first.devicePixelRatio;
+    final snappedTranslationX = (translationX * dpr).roundToDouble() / dpr;
+    final snappedTranslationY = (translationY * dpr).roundToDouble() / dpr;
+
+    final snappedX = (offset.x - snappedTranslationX) / scale;
+    final snappedY = (offset.y - snappedTranslationY) / scale;
+
+    if ((snappedX - pos.x).abs() > 0.0001 || (snappedY - pos.y).abs() > 0.0001) {
+      cam.viewfinder.position = Vector2(snappedX, snappedY);
+    }
+  }
+
+  double _viewportScale() {
+    final viewport = cam.viewport;
+    if (viewport is FixedResolutionViewport) {
+      return viewport.scale.x;
+    }
+    return 1.0;
   }
 
   // ===== public helpers =====
@@ -285,6 +367,8 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     threatSystem.reset();
     xpSystem.reset();
 
+    worldMap.children.whereType<EnemyComponent>().forEach((c) => c.removeFromParent());
+    worldMap.children.whereType<XpCrystalComponent>().forEach((c) => c.removeFromParent());
     player?.removeFromParent();
     player = null;
 
@@ -300,7 +384,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
 
     _syncPlayerStatsToHud();
 
-    cam.follow(newPlayer);
+    cam.follow(newPlayer, snap: true);
 
     spawnStaticInteractablesForCurrentMap();
 
@@ -334,12 +418,28 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     if (p == null) return;
 
     final pos = worldMap.clampToMap(p.position + Vector2(220, 0));
+    final (hpScale, dmgScale, speedScale) = _bossScales();
 
     final roll = rng.nextInt(3);
     final boss = switch (roll) {
-      0 => SkeletonBossComponent(position: pos),
-      1 => ArmoredSkeletonBossComponent(position: pos),
-      _ => GreatswordSkeletonBossComponent(position: pos),
+      0 => SkeletonBossComponent(
+          position: pos,
+          speed: 70 * speedScale,
+          hp: max(1, (320 * hpScale).round()),
+          damage: max(1, (16 * dmgScale).round()),
+        ),
+      1 => ArmoredSkeletonBossComponent(
+          position: pos,
+          speed: 68 * speedScale,
+          hp: max(1, (340 * hpScale).round()),
+          damage: max(1, (17 * dmgScale).round()),
+        ),
+      _ => GreatswordSkeletonBossComponent(
+          position: pos,
+          speed: 66 * speedScale,
+          hp: max(1, (350 * hpScale).round()),
+          damage: max(1, (18 * dmgScale).round()),
+        ),
     };
     worldMap.add(boss);
   }
@@ -352,8 +452,36 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     if (p == null) return;
 
     final pos = worldMap.clampToMap(p.position + Vector2(260, -40));
+    final (hpScale, dmgScale, speedScale) = _bossScales();
 
-    worldMap.add(LancerBossComponent(position: pos));
+    worldMap.add(
+      LancerBossComponent(
+        position: pos,
+        speed: 78 * speedScale,
+        hp: max(1, (420 * hpScale).round()),
+        damage: max(1, (20 * dmgScale).round()),
+      ),
+    );
+  }
+
+  double _runProgress() {
+    const total = GameConstants.biomeDurationSeconds;
+    if (total <= 0) return 0.0;
+    final left = timeLeft.value;
+    return (1.0 - (left / total)).clamp(0.0, 1.0);
+  }
+
+  (double, double, double) _bossScales() {
+    final progress = _runProgress();
+    final progressCurve = pow(progress, 1.4).toDouble();
+    final level = xpSystem.level;
+    final mapScale = 1.0 + mapIndex * 0.20;
+
+    final hpScale = (1.0 + progressCurve * 1.0) * (1.0 + max(0, level - 1) * 0.05) * mapScale;
+    final dmgScale = (1.0 + progressCurve * 0.6) * (1.0 + max(0, level - 1) * 0.025) * mapScale;
+    final speedScale = 1.0 + progressCurve * 0.25 + mapIndex * 0.05;
+
+    return (hpScale, dmgScale, speedScale);
   }
 
   int mapSeedForIndex(int index) {
@@ -365,11 +493,18 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     worldMap.children.whereType<AltarComponent>().forEach((c) => c.removeFromParent());
     worldMap.children.whereType<KeyComponent>().forEach((c) => c.removeFromParent());
     worldMap.children.whereType<PortalComponent>().forEach((c) => c.removeFromParent());
+    worldMap.children.whereType<PotionComponent>().forEach((c) => c.removeFromParent());
     _portal = null;
 
     final mapRng = Random(mapSeedForIndex(mapIndex));
     final used = <Vector2>[];
+    final usedRects = <Rect>[];
+    final keyPositions = <Vector2>[];
     final avoidPoint = player?.position ?? (worldMap.mapSize / 2);
+
+    final mapSpawns = _spawnMapInteractables(used: used, usedRects: usedRects);
+    final hasMapChests = mapSpawns.chests > 0;
+    final hasMapAltars = mapSpawns.altars > 0;
 
     final portalPos =
         _findFreeInteractablePoint(mapRng, used, avoidPoint) ?? _randomPointOnMap(mapRng);
@@ -381,36 +516,72 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
 
     const keyCount = 2;
     for (var i = 0; i < keyCount; i++) {
-      final keyPos =
-          _findFreeInteractablePoint(mapRng, used, avoidPoint) ?? _randomPointOnMap(mapRng);
+      final keyPos = _findFreeKeyPoint(mapRng, used, keyPositions, avoidPoint) ??
+          _findFreeKeyPoint(
+            mapRng,
+            used,
+            keyPositions,
+            avoidPoint,
+            minKeyDist: GameConstants.keyMinDistanceBetween * 0.6,
+          ) ??
+          _randomPointOnMap(mapRng);
       used.add(keyPos);
+      keyPositions.add(keyPos);
       worldMap.add(KeyComponent(position: keyPos));
     }
 
-    const chestCount = 7;
-    for (var i = 0; i < chestCount; i++) {
+    if (!hasMapChests) {
+      const chestCount = 7;
+      for (var i = 0; i < chestCount; i++) {
+        final pos = _findFreeInteractablePoint(mapRng, used, avoidPoint);
+        if (pos == null) continue;
+        used.add(pos);
+        worldMap.add(
+          ChestComponent(
+            position: pos,
+            openTime: 2.0,
+            interactRadius: 54,
+          ),
+        );
+      }
+    }
+
+    if (!hasMapAltars) {
+      const altarCount = 4;
+      for (var i = 0; i < altarCount; i++) {
+        final pos = _findFreeInteractablePoint(mapRng, used, avoidPoint);
+        if (pos == null) continue;
+        used.add(pos);
+        worldMap.add(
+          AltarComponent(
+            position: pos,
+            openTime: 2.2,
+            interactRadius: 58,
+          ),
+        );
+      }
+    }
+
+    const healPotionCount = 10;
+    for (var i = 0; i < healPotionCount; i++) {
       final pos = _findFreeInteractablePoint(mapRng, used, avoidPoint);
       if (pos == null) continue;
       used.add(pos);
       worldMap.add(
-        ChestComponent(
+        HealPotionComponent(
           position: pos,
-          openTime: 2.0,
-          interactRadius: 54,
         ),
       );
     }
 
-    const altarCount = 100;
-    for (var i = 0; i < altarCount; i++) {
+    const shieldPotionCount = 4;
+    for (var i = 0; i < shieldPotionCount; i++) {
       final pos = _findFreeInteractablePoint(mapRng, used, avoidPoint);
       if (pos == null) continue;
       used.add(pos);
       worldMap.add(
-        AltarComponent(
+        ShieldPotionComponent(
           position: pos,
-          openTime: 2.2,
-          interactRadius: 58,
         ),
       );
     }
@@ -450,6 +621,144 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     }
 
     return null;
+  }
+
+  Vector2? _findFreeKeyPoint(
+    Random r,
+    List<Vector2> used,
+    List<Vector2> keys,
+    Vector2 avoidPoint, {
+    double? minKeyDist,
+  }) {
+    const minFromPlayer = GameConstants.interactableMinDistFromPlayer;
+    const minBetween = GameConstants.interactableMinDistBetween;
+    const maxAttempts = GameConstants.interactableSpawnAttempts;
+    final minKeyDistance = minKeyDist ?? GameConstants.keyMinDistanceBetween;
+
+    for (var i = 0; i < maxAttempts; i++) {
+      final p = _randomPointOnMap(r);
+      if (p.distanceToSquared(avoidPoint) < minFromPlayer * minFromPlayer) {
+        continue;
+      }
+
+      var ok = true;
+      for (final u in used) {
+        if (p.distanceToSquared(u) < minBetween * minBetween) {
+          ok = false;
+          break;
+        }
+      }
+      if (!ok) continue;
+
+      for (final k in keys) {
+        if (p.distanceToSquared(k) < minKeyDistance * minKeyDistance) {
+          ok = false;
+          break;
+        }
+      }
+
+      if (ok) return p;
+    }
+
+    return null;
+  }
+
+  ({int chests, int altars}) _spawnMapInteractables({
+    required List<Vector2> used,
+    required List<Rect> usedRects,
+  }) {
+    final objects = worldMap.objectsFromLayer(WorldMap.layerObjects);
+    var chestCount = 0;
+    var altarCount = 0;
+
+    for (final obj in objects) {
+      if (!obj.visible) continue;
+      if (obj.isPoint || obj.isPolygon || obj.isPolyline) continue;
+
+      final kind = _resolveMapObjectKind(obj);
+      if (kind == null) continue;
+
+      final size = (kind == _MapObjectKind.chest) ? Vector2(48, 96) : Vector2(96, 96);
+      final center = _mapObjectCenter(obj, size);
+      final rect = Rect.fromCenter(
+        center: Offset(center.x, center.y),
+        width: size.x,
+        height: size.y,
+      );
+
+      if (_overlapsAny(rect, usedRects)) continue;
+
+      used.add(center);
+      usedRects.add(rect);
+
+      if (kind == _MapObjectKind.chest) {
+        chestCount += 1;
+        worldMap.add(
+          ChestComponent(
+            position: center,
+            openTime: 2.0,
+            interactRadius: 54,
+          ),
+        );
+      } else {
+        altarCount += 1;
+        worldMap.add(
+          AltarComponent(
+            position: center,
+            openTime: 2.2,
+            interactRadius: 58,
+          ),
+        );
+      }
+    }
+
+    return (chests: chestCount, altars: altarCount);
+  }
+
+  _MapObjectKind? _resolveMapObjectKind(TiledObject obj) {
+    final type = obj.type.toLowerCase();
+    final name = obj.name.toLowerCase();
+    final tag = type.isNotEmpty ? type : name;
+
+    if (tag.contains('chest') || tag.contains('coffin') || tag.contains('casket')) {
+      return _MapObjectKind.chest;
+    }
+    if (tag.contains('altar') ||
+        tag.contains('church') ||
+        tag.contains('chapel') ||
+        tag.contains('shrine')) {
+      return _MapObjectKind.altar;
+    }
+
+    final gid = obj.gid;
+    if (gid == null) return null;
+
+    final info = worldMap.gidInfo(gid);
+    if (info == null || info.tilesetName != 'Cemetery_Objects') return null;
+
+    if (_mapChestTileIds.contains(info.localId)) {
+      return _MapObjectKind.chest;
+    }
+    if (_mapAltarTileIds.contains(info.localId)) {
+      return _MapObjectKind.altar;
+    }
+    return null;
+  }
+
+  Vector2 _mapObjectCenter(TiledObject obj, Vector2 size) {
+    final width = max(obj.width, size.x);
+    final height = max(obj.height, size.y);
+    if (obj.gid != null) {
+      return Vector2(obj.x + width / 2, obj.y - height / 2);
+    }
+    return Vector2(obj.x + width / 2, obj.y + height / 2);
+  }
+
+  bool _overlapsAny(Rect rect, List<Rect> others) {
+    for (final other in others) {
+      if (rect.overlaps(other)) return true;
+    }
+    return false;
   }
 
   void onKeyCollected() {
@@ -527,10 +836,12 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     announcementText.value = '';
 
     worldMap.children.whereType<EnemyComponent>().forEach((c) => c.removeFromParent());
+    worldMap.children.whereType<XpCrystalComponent>().forEach((c) => c.removeFromParent());
     worldMap.children.whereType<ChestComponent>().forEach((c) => c.removeFromParent());
     worldMap.children.whereType<AltarComponent>().forEach((c) => c.removeFromParent());
     worldMap.children.whereType<KeyComponent>().forEach((c) => c.removeFromParent());
     worldMap.children.whereType<PortalComponent>().forEach((c) => c.removeFromParent());
+    worldMap.children.whereType<PotionComponent>().forEach((c) => c.removeFromParent());
 
     final p = player;
     if (p != null) {
@@ -929,4 +1240,9 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     unawaited(db.close());
     super.onRemove();
   }
+}
+
+enum _MapObjectKind {
+  chest,
+  altar,
 }

@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:pixel_clash/game/components/combat/combat_event.dart';
 import 'package:pixel_clash/game/components/combat/damageable.dart';
 import 'package:pixel_clash/game/components/player/player_component.dart';
+import 'package:pixel_clash/game/components/xp/xp_crystal_component.dart';
 import 'package:pixel_clash/game/pixel_clash_game.dart';
 import 'package:pixel_clash/game/ui/crit_lightning_component.dart';
 import 'package:pixel_clash/game/ui/damage_number_component.dart';
@@ -502,7 +503,21 @@ class EnemyComponent extends PositionComponent
     onDeath();
 
     game.scoreSystem.addScore(scoreReward);
-    game.xpSystem.addXp(xpReward);
+    if (xpReward > 0) {
+      final pieces = _splitXpReward(xpReward, game.rng);
+      for (final xp in pieces) {
+        final angle = game.rng.nextDouble() * pi * 2;
+        final dist = 10 + game.rng.nextDouble() * 30;
+        final scatter = Vector2(cos(angle) * dist, sin(angle) * dist);
+        final dropPos = game.worldMap.clampToMap(position + scatter);
+        game.worldMap.add(
+          XpCrystalComponent(
+            position: dropPos,
+            xp: xp,
+          ),
+        );
+      }
+    }
 
     final killer = _lastAttacker;
     if (killer is PlayerComponent) {
@@ -534,6 +549,31 @@ class EnemyComponent extends PositionComponent
       ),
     );
   }
+}
+
+List<double> _splitXpReward(int total, Random rng) {
+  if (total <= 0) return <double>[];
+
+  int targetPieces;
+  if (total <= 2) {
+    targetPieces = total * 6;
+  } else if (total <= 6) {
+    targetPieces = total * 5;
+  } else if (total <= 12) {
+    targetPieces = total * 4;
+  } else if (total <= 20) {
+    targetPieces = total * 3;
+  } else {
+    targetPieces = total * 2;
+  }
+
+  final jitter = rng.nextInt(5) - 2;
+  targetPieces = (targetPieces + jitter).clamp(12, 60);
+
+  final perPiece = total / targetPieces;
+  final pieces = List<double>.filled(targetPieces, perPiece);
+  pieces.shuffle(rng);
+  return pieces;
 }
 
 class _DotEffect {
