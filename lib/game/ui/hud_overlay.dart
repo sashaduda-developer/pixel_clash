@@ -38,13 +38,13 @@ class HudOverlay extends StatelessWidget {
                           final maxHp = game.playerMaxHp.value;
                           final ratio = (maxHp <= 0) ? 0.0 : (hp / maxHp).clamp(0.0, 1.0);
 
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('HP: $hp/$maxHp'),
-                              const SizedBox(height: 4),
-                              SizedBox(
-                                width: 180,
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('${l10n.t('hud_hp')}: $hp/$maxHp'),
+                                  const SizedBox(height: 4),
+                                  SizedBox(
+                                    width: 180,
                                 child: LinearProgressIndicator(
                                   value: ratio,
                                   backgroundColor: Colors.white12,
@@ -105,7 +105,7 @@ class HudOverlay extends StatelessWidget {
                       const SizedBox(height: 8),
                       ValueListenableBuilder<int>(
                         valueListenable: game.level,
-                        builder: (_, v, __) => Text('Lv: $v'),
+                        builder: (_, v, __) => Text('${l10n.t('hud_level')}: $v'),
                       ),
                       ValueListenableBuilder<double>(
                         valueListenable: game.xpProgress,
@@ -184,7 +184,7 @@ class HudOverlay extends StatelessWidget {
                                 ValueListenableBuilder<String>(
                                   valueListenable: game.bossName,
                                   builder: (_, name, __) => Text(
-                                    name.isEmpty ? 'Boss' : name,
+                                    name.isEmpty ? l10n.t('boss_generic') : name,
                                     style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 14,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pixel_clash/game/components/combat/rarity.dart';
+import 'package:pixel_clash/game/localization/l10n.dart';
 import 'package:pixel_clash/game/pixel_clash_game.dart';
 import 'package:pixel_clash/game/rewards/reward_definition.dart';
 
@@ -10,6 +11,7 @@ class BossRewardOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = game.l10n;
     return ValueListenableBuilder<RewardDefinition?>(
       valueListenable: game.bossRewardChoice,
       builder: (_, reward, __) {
@@ -44,9 +46,9 @@ class BossRewardOverlay extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
-                    'НАГРАДА БОССА',
-                    style: TextStyle(
+                  Text(
+                    l10n.t('boss_reward_title'),
+                    style: const TextStyle(
                       color: Colors.orangeAccent,
                       fontSize: 16,
                       fontWeight: FontWeight.w900,
@@ -75,7 +77,7 @@ class BossRewardOverlay extends StatelessWidget {
                                     ),
                                   ),
                                 ),
-                                _RarityBadge(rarity: reward.rarity),
+                                _RarityBadge(rarity: reward.rarity, l10n: l10n),
                               ],
                             ),
                             const SizedBox(height: 6),
@@ -105,9 +107,9 @@ class BossRewardOverlay extends StatelessWidget {
                           borderRadius: BorderRadius.circular(14),
                         ),
                       ),
-                      child: const Text(
-                        'Взять',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                      child: Text(
+                        l10n.t('reward_take'),
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
                       ),
                     ),
                   ),
@@ -146,12 +148,20 @@ class _IconBadge extends StatelessWidget {
 }
 
 class _RarityBadge extends StatelessWidget {
-  const _RarityBadge({required this.rarity});
+  const _RarityBadge({required this.rarity, required this.l10n});
 
   final Rarity rarity;
+  final L10n l10n;
 
   @override
   Widget build(BuildContext context) {
+    final text = switch (rarity) {
+      Rarity.common => l10n.t('rarity_common'),
+      Rarity.rare => l10n.t('rarity_rare'),
+      Rarity.epic => l10n.t('rarity_epic'),
+      Rarity.legendary => l10n.t('rarity_legendary'),
+    };
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -160,7 +170,7 @@ class _RarityBadge extends StatelessWidget {
         border: Border.all(color: _rarityColor(rarity)),
       ),
       child: Text(
-        _rarityLabel(rarity),
+        text,
         style: TextStyle(
           color: _rarityColor(rarity),
           fontSize: 12,
@@ -178,10 +188,18 @@ class _StatChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      children: values.map((s) => _StatChip(stat: s)).toList(),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth.isFinite ? constraints.maxWidth : null;
+        return SizedBox(
+          width: width,
+          child: Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: values.map((s) => _StatChip(stat: s)).toList(),
+          ),
+        );
+      },
     );
   }
 }
@@ -234,18 +252,5 @@ Color _rarityColor(Rarity rarity) {
       return const Color(0xFFB388FF);
     case Rarity.legendary:
       return const Color(0xFFFFB74D);
-  }
-}
-
-String _rarityLabel(Rarity rarity) {
-  switch (rarity) {
-    case Rarity.common:
-      return 'Обычное';
-    case Rarity.rare:
-      return 'Редкое';
-    case Rarity.epic:
-      return 'Эпическое';
-    case Rarity.legendary:
-      return 'Легендарное';
   }
 }

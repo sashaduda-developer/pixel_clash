@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pixel_clash/game/components/combat/rarity.dart';
+import 'package:pixel_clash/game/localization/l10n.dart';
 import 'package:pixel_clash/game/pixel_clash_game.dart';
 import 'package:pixel_clash/game/rewards/reward_definition.dart';
 
@@ -11,6 +12,7 @@ class RewardPickOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = game.l10n;
     // choices лежат в game.rewardChoices
     return ValueListenableBuilder<List<RewardDefinition>>(
       valueListenable: game.rewardChoices,
@@ -25,9 +27,9 @@ class RewardPickOverlay extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
-                      'Выбор награды',
-                      style: TextStyle(
+                    Text(
+                      l10n.t('reward_pick_title'),
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 22,
                         fontWeight: FontWeight.w700,
@@ -36,6 +38,7 @@ class RewardPickOverlay extends StatelessWidget {
                     const SizedBox(height: 14),
                     ...choices.map((r) => _RewardCard(
                           reward: r,
+                          l10n: l10n,
                           onPick: () {
                             game.applyRewardAndResume(r);
                           },
@@ -69,11 +72,13 @@ class RewardPickOverlay extends StatelessWidget {
 class _RewardCard extends StatelessWidget {
   const _RewardCard({
     required this.reward,
+    required this.l10n,
     required this.onPick,
     this.onSkip,
   });
 
   final RewardDefinition reward;
+  final L10n l10n;
   final VoidCallback onPick;
   final VoidCallback? onSkip;
 
@@ -137,9 +142,9 @@ class _RewardCard extends StatelessWidget {
                                 height: 1,
                               ),
                             ),
-                            _RarityChip(rarity: reward.rarity),
+                            _RarityChip(rarity: reward.rarity, l10n: l10n),
                             if (reward.kind == RewardKind.ability || reward.kind == RewardKind.buff)
-                              _KindChip(kind: reward.kind),
+                              _KindChip(kind: reward.kind, l10n: l10n),
                           ],
                         ),
                         const SizedBox(height: 6),
@@ -167,7 +172,7 @@ class _RewardCard extends StatelessWidget {
                                     side: BorderSide(color: borderColor.withValues(alpha: 0.4)),
                                     padding: const EdgeInsets.symmetric(vertical: 10),
                                   ),
-                                  child: const Text('Уйти'),
+                                  child: Text(l10n.t('reward_skip')),
                                 ),
                               ),
                               const SizedBox(width: 10),
@@ -184,7 +189,7 @@ class _RewardCard extends StatelessWidget {
                                       side: BorderSide(color: borderColor.withValues(alpha: 0.5)),
                                     ),
                                   ),
-                                  child: const Text('Взять'),
+                                  child: Text(l10n.t('reward_take')),
                                 ),
                               ),
                             ],
@@ -223,17 +228,18 @@ class _RewardCard extends StatelessWidget {
 }
 
 class _RarityChip extends StatelessWidget {
-  const _RarityChip({required this.rarity});
+  const _RarityChip({required this.rarity, required this.l10n});
 
   final Rarity rarity;
+  final L10n l10n;
 
   @override
   Widget build(BuildContext context) {
     final (text, color) = switch (rarity) {
-      Rarity.common => ('Обычное', const Color(0xFFB0BEC5)),
-      Rarity.rare => ('Редкое', const Color(0xFF64B5F6)),
-      Rarity.epic => ('Эпическое', const Color(0xFFBA68C8)),
-      Rarity.legendary => ('Легендарное', const Color(0xFFFFD54F)),
+      Rarity.common => (l10n.t('rarity_common'), const Color(0xFFB0BEC5)),
+      Rarity.rare => (l10n.t('rarity_rare'), const Color(0xFF64B5F6)),
+      Rarity.epic => (l10n.t('rarity_epic'), const Color(0xFFBA68C8)),
+      Rarity.legendary => (l10n.t('rarity_legendary'), const Color(0xFFFFD54F)),
     };
 
     return Container(
@@ -257,15 +263,16 @@ class _RarityChip extends StatelessWidget {
 }
 
 class _KindChip extends StatelessWidget {
-  const _KindChip({required this.kind});
+  const _KindChip({required this.kind, required this.l10n});
 
   final RewardKind kind;
+  final L10n l10n;
 
   @override
   Widget build(BuildContext context) {
     final (text, color) = switch (kind) {
-      RewardKind.ability => ('Активная', const Color(0xFF4FC3F7)),
-      RewardKind.buff => ('Пассивная', const Color(0xFF81C784)),
+      RewardKind.ability => (l10n.t('kind_active'), const Color(0xFF4FC3F7)),
+      RewardKind.buff => (l10n.t('kind_passive'), const Color(0xFF81C784)),
       _ => ('', const Color(0xFFB0BEC5)),
     };
 
@@ -300,28 +307,36 @@ class _StatChips extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Строки характеристик показываем отдельными чипами.
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      children: values.map((stat) {
-        final chipColor = _chipColor(stat);
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: chipColor.withValues(alpha: 0.16),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: chipColor.withValues(alpha: 0.5)),
-          ),
-          child: Text(
-            '${stat.label} ${stat.value}',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.9),
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth.isFinite ? constraints.maxWidth : null;
+        return SizedBox(
+          width: width,
+          child: Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: values.map((stat) {
+              final chipColor = _chipColor(stat);
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: chipColor.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: chipColor.withValues(alpha: 0.5)),
+                ),
+                child: Text(
+                  '${stat.label} ${stat.value}',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              );
+            }).toList(),
           ),
         );
-      }).toList(),
+      },
     );
   }
 

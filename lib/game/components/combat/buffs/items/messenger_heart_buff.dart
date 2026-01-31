@@ -2,7 +2,6 @@ import 'dart:math';
 
 import 'package:pixel_clash/game/components/combat/buff.dart';
 import 'package:pixel_clash/game/components/combat/combat_event.dart';
-import 'package:pixel_clash/game/components/combat/rarity.dart';
 import 'package:pixel_clash/game/components/player/player_component.dart';
 
 class MessengerHeartBuff extends Buff {

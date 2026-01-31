@@ -9,6 +9,7 @@ import 'package:pixel_clash/game/components/combat/combat_event.dart';
 import 'package:pixel_clash/game/components/combat/rarity.dart';
 import 'package:pixel_clash/game/components/enemies/enemy_component.dart';
 import 'package:pixel_clash/game/components/enemies/types/final_boss.dart';
+import 'package:pixel_clash/game/components/enemies/types/lancer_boss.dart';
 import 'package:pixel_clash/game/components/enemies/types/skeleton_boss.dart';
 import 'package:pixel_clash/game/components/interactables/altar_component.dart';
 import 'package:pixel_clash/game/components/interactables/chest_component.dart';
@@ -322,7 +323,9 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
 
   void _spawnFirstBoss() {
     worldMap.children.whereType<SkeletonBossComponent>().forEach((b) => b.removeFromParent());
-    worldMap.children.whereType<ArmoredSkeletonBossComponent>().forEach((b) => b.removeFromParent());
+    worldMap.children
+        .whereType<ArmoredSkeletonBossComponent>()
+        .forEach((b) => b.removeFromParent());
     worldMap.children
         .whereType<GreatswordSkeletonBossComponent>()
         .forEach((b) => b.removeFromParent());
@@ -343,17 +346,14 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
 
   void _spawnFinalBoss() {
     worldMap.children.whereType<FinalBossComponent>().forEach((b) => b.removeFromParent());
+    worldMap.children.whereType<LancerBossComponent>().forEach((b) => b.removeFromParent());
 
     final p = player;
     if (p == null) return;
 
     final pos = worldMap.clampToMap(p.position + Vector2(260, -40));
 
-    worldMap.add(
-      FinalBossComponent(
-        position: pos,
-      ),
-    );
+    worldMap.add(LancerBossComponent(position: pos));
   }
 
   int mapSeedForIndex(int index) {
@@ -401,7 +401,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
       );
     }
 
-    const altarCount = 5;
+    const altarCount = 100;
     for (var i = 0; i < altarCount; i++) {
       final pos = _findFreeInteractablePoint(mapRng, used, avoidPoint);
       if (pos == null) continue;

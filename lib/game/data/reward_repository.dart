@@ -94,7 +94,11 @@ class RewardRepository {
 
       // Если по редкости ничего нет, берём из любого, но тоже без повторов по id
       final picked = _weightedPick(rng, byRarity) ??
-          _weightedPick(rng, rows.where((r) => !usedIds.contains(r.id) && !_isMaxed(r.id, r.paramsJson, build)).toList());
+          _weightedPick(
+              rng,
+              rows
+                  .where((r) => !usedIds.contains(r.id) && !_isMaxed(r.id, r.paramsJson, build))
+                  .toList());
 
       if (picked == null) break;
 
@@ -112,7 +116,7 @@ class RewardRepository {
         maxLevel: maxLevel,
         build: build,
       );
-      final stats = _buildStatsForReward(kind, params, levelInfo?.nextLevel);
+      final stats = _buildStatsForReward(l10n, kind, params, levelInfo?.nextLevel);
 
       result.add(
         RewardDefinition(
@@ -277,7 +281,7 @@ class RewardRepository {
       if (stat == 'manaRegen' || stat == 'hpRegen') {
         return l10n.tParams(descKey, {'value': delta.toStringAsFixed(1)});
       }
-      return l10n.tParams(descKey, {'value': '${delta.round()}'}); 
+      return l10n.tParams(descKey, {'value': '${delta.round()}'});
     }
 
     final ls = params['lifesteal'];
@@ -409,7 +413,11 @@ class RewardRepository {
     );
   }
 
-  List<RewardStat>? _buildLevelStats(Map<String, Object?> params, int? level) {
+  List<RewardStat>? _buildLevelStats(
+    L10n l10n,
+    Map<String, Object?> params,
+    int? level,
+  ) {
     if (level == null) return null;
 
     final raw = params['levels'];
@@ -435,9 +443,9 @@ class RewardRepository {
 
     final parts = <RewardStat>[];
     for (final entry in values.entries) {
-      final label = _labelForLevelKey(entry.key);
+      final label = _labelForLevelKey(l10n, entry.key);
       if (label == null) continue;
-      final formatted = _formatLevelValue(entry.key, entry.value);
+      final formatted = _formatLevelValue(l10n, entry.key, entry.value);
       if (formatted == null) continue;
       parts.add(
         RewardStat(
@@ -451,13 +459,13 @@ class RewardRepository {
     return parts.isEmpty ? null : parts;
   }
 
-  List<RewardStat>? _buildItemStats(Map<String, Object?> params) {
+  List<RewardStat>? _buildItemStats(L10n l10n, Map<String, Object?> params) {
     final parts = <RewardStat>[];
 
     for (final entry in params.entries) {
-      final label = _labelForItemKey(entry.key);
+      final label = _labelForItemKey(l10n, entry.key);
       if (label == null) continue;
-      final formatted = _formatItemValue(entry.key, entry.value);
+      final formatted = _formatItemValue(l10n, entry.key, entry.value);
       if (formatted == null) continue;
       parts.add(
         RewardStat(
@@ -472,6 +480,7 @@ class RewardRepository {
   }
 
   List<RewardStat>? _buildStatsForReward(
+    L10n l10n,
     RewardKind kind,
     Map<String, Object?> params,
     int? level,
@@ -479,50 +488,51 @@ class RewardRepository {
     switch (kind) {
       case RewardKind.ability:
       case RewardKind.buff:
-        return _buildLevelStats(params, level);
+        return _buildLevelStats(l10n, params, level);
       case RewardKind.item:
-        return _buildItemStats(params);
+        return _buildItemStats(l10n, params);
       case RewardKind.stat:
         return null;
     }
   }
 
-  String? _labelForItemKey(String key) {
+  String? _labelForItemKey(L10n l10n, String key) {
     return switch (key) {
-      'spawnRateAdd' => 'Спавн',
-      'eliteChanceAdd' => 'Шанс элитных',
-      'eliteHpMult' => 'HP элитных',
-      'eliteDmgMult' => 'Урон элитных',
-      'eliteScoreMult' => 'Очки элитных',
-      'eliteXpMult' => 'XP элитных',
-      'luckBonusAdd' => 'Удача',
-      'lifestealAdd' => 'Вампиризм',
-      'critChanceAdd' => 'Крит шанс',
-      'bossDamageMult' => 'Урон по боссам',
-      'moveSpeedPct' => 'Скорость',
-      'armorPct' => 'Броня',
-      'armorDelta' => 'Броня',
-      'attackSpeedPct' => 'Скорость атаки',
-      'maxManaPct' => 'Макс мана',
-      'manaRegenDelta' => 'Реген маны',
-      'maxHpPct' => 'Макс HP',
-      'reflectPct' => 'Отражение',
-      'healMultiplier' => 'Исцеление',
-      'maxHpDelta' => 'Макс HP',
-      'damageDelta' => 'Урон',
-      'xpGainMult' => 'XP',
-      'voidProcChance' => 'Шанс пустоты',
-      'voidDurationSec' => 'Пустота',
-      'voidCooldownSec' => 'КД пустоты',
-      'sprintSpeedPct' => 'Рывок',
-      'sprintDurationSec' => 'Длительность',
+      'spawnRateAdd' => l10n.t('stat_spawn_rate'),
+      'eliteChanceAdd' => l10n.t('stat_elite_chance'),
+      'eliteHpMult' => l10n.t('stat_elite_hp'),
+      'eliteDmgMult' => l10n.t('stat_elite_damage'),
+      'eliteScoreMult' => l10n.t('stat_elite_score'),
+      'eliteXpMult' => l10n.t('stat_elite_xp'),
+      'luckBonusAdd' => l10n.t('stat_luck'),
+      'lifestealAdd' => l10n.t('stat_lifesteal'),
+      'critChanceAdd' => l10n.t('stat_crit_chance'),
+      'bossDamageMult' => l10n.t('stat_boss_damage'),
+      'moveSpeedPct' => l10n.t('stat_move_speed'),
+      'armorPct' => l10n.t('stat_armor'),
+      'armorDelta' => l10n.t('stat_armor'),
+      'attackSpeedPct' => l10n.t('stat_attack_speed'),
+      'maxManaPct' => l10n.t('stat_max_mana'),
+      'manaRegenDelta' => l10n.t('stat_mana_regen'),
+      'maxHpPct' => l10n.t('stat_max_hp'),
+      'reflectPct' => l10n.t('stat_reflect'),
+      'healMultiplier' => l10n.t('stat_heal'),
+      'maxHpDelta' => l10n.t('stat_max_hp'),
+      'damageDelta' => l10n.t('stat_damage'),
+      'xpGainMult' => l10n.t('stat_xp'),
+      'voidProcChance' => l10n.t('stat_void_chance'),
+      'voidDurationSec' => l10n.t('stat_void'),
+      'voidCooldownSec' => l10n.t('stat_void_cooldown'),
+      'sprintSpeedPct' => l10n.t('stat_sprint'),
+      'sprintDurationSec' => l10n.t('stat_duration'),
       _ => null,
     };
   }
 
-  String? _formatItemValue(String key, Object? value) {
+  String? _formatItemValue(L10n l10n, String key, Object? value) {
     if (value is! num) return null;
     final v = value.toDouble();
+    final unitSec = l10n.t('unit_sec_short');
 
     switch (key) {
       case 'spawnRateAdd':
@@ -554,13 +564,13 @@ class RewardRepository {
       case 'voidDurationSec':
       case 'voidCooldownSec':
       case 'sprintDurationSec':
-        return '${v.toStringAsFixed(1)}с';
+        return '${v.toStringAsFixed(1)}$unitSec';
       case 'maxHpDelta':
       case 'damageDelta':
       case 'armorDelta':
         return v >= 0 ? '+${v.round()}' : '${v.round()}';
       case 'manaRegenDelta':
-        return v >= 0 ? '+${v.toStringAsFixed(1)}' : '${v.toStringAsFixed(1)}';
+        return v >= 0 ? '+${v.toStringAsFixed(1)}' : v.toStringAsFixed(1);
     }
 
     return v.toStringAsFixed(2);
@@ -638,42 +648,44 @@ class RewardRepository {
     return build.getStacks(id) >= maxLevel;
   }
 
-  String? _labelForLevelKey(String key) {
+  String? _labelForLevelKey(L10n l10n, String key) {
     return switch (key) {
-      'procChance' => 'Шанс',
-      'durationSec' => 'Длительность',
-      'cooldownSec' => 'КД',
-      'manaCost' => 'Мана',
-      'totalDamagePct' => 'Урон',
-      'damagePctOfHit' => 'Урон',
-      'damagePctBase' => 'Урон',
-      'radius' => 'Радиус',
-      'intervalSec' => 'Интервал',
-      'freezeSec' => 'Заморозка',
-      'slowPct' => 'Замедление',
-      'stunSec' => 'Стан',
-      'tickSec' => 'Тик',
-      'targets' => 'Цели',
-      'jumps' => 'Прыжки',
-      'internalCooldownSec' => 'КД',
-      'lifesteal' => 'Вампиризм',
-      'reflectPct' => 'Отражение',
-      'pierceCount' => 'Пробитие',
-      'bounces' => 'Рикошеты',
-      'damageMultiplier' => 'Множитель',
-      'healPctMaxHp' => 'Хил',
-      'stacksToExplode' => 'Стаки',
-      'thirdHitChance' => 'Шанс 3-го удара',
-      'thirdHitDamageMultiplier' => 'Урон 3-го',
-      'critBonusMultiplier' => 'Усиление крита',
-      'hitsToStun' => 'Удары до стана',
+      'procChance' => l10n.t('stat_chance'),
+      'durationSec' => l10n.t('stat_duration'),
+      'cooldownSec' => l10n.t('stat_cooldown'),
+      'manaCost' => l10n.t('stat_mana'),
+      'totalDamagePct' => l10n.t('stat_damage'),
+      'damagePctOfHit' => l10n.t('stat_damage'),
+      'damagePctBase' => l10n.t('stat_damage'),
+      'radius' => l10n.t('stat_radius'),
+      'intervalSec' => l10n.t('stat_interval'),
+      'freezeSec' => l10n.t('stat_freeze'),
+      'slowPct' => l10n.t('stat_slow'),
+      'stunSec' => l10n.t('stat_stun'),
+      'tickSec' => l10n.t('stat_tick'),
+      'targets' => l10n.t('stat_targets'),
+      'jumps' => l10n.t('stat_jumps'),
+      'internalCooldownSec' => l10n.t('stat_cooldown'),
+      'lifesteal' => l10n.t('stat_lifesteal'),
+      'reflectPct' => l10n.t('stat_reflect'),
+      'pierceCount' => l10n.t('stat_pierce'),
+      'bounces' => l10n.t('stat_bounces'),
+      'damageMultiplier' => l10n.t('stat_multiplier'),
+      'healPctMaxHp' => l10n.t('stat_heal_pct'),
+      'stacksToExplode' => l10n.t('stat_stacks'),
+      'thirdHitChance' => l10n.t('stat_third_hit_chance'),
+      'thirdHitDamageMultiplier' => l10n.t('stat_third_hit_damage'),
+      'critBonusMultiplier' => l10n.t('stat_crit_bonus'),
+      'hitsToStun' => l10n.t('stat_hits_to_stun'),
       _ => null,
     };
   }
 
-  String? _formatLevelValue(String key, Object? value) {
+  String? _formatLevelValue(L10n l10n, String key, Object? value) {
     if (value is! num) return null;
     final v = value.toDouble();
+    final unitSec = l10n.t('unit_sec_short');
+    final unitMeter = l10n.t('unit_meter_short');
 
     switch (key) {
       case 'procChance':
@@ -690,14 +702,14 @@ class RewardRepository {
       case 'critBonusMultiplier':
         return '${(v * 100).round()}%';
       case 'radius':
-        return '${v.toStringAsFixed(1)}м';
+        return '${v.toStringAsFixed(1)}$unitMeter';
       case 'intervalSec':
       case 'durationSec':
       case 'freezeSec':
       case 'stunSec':
       case 'tickSec':
       case 'internalCooldownSec':
-        return '${v.toStringAsFixed(1)}с';
+        return '${v.toStringAsFixed(1)}$unitSec';
       case 'manaCost':
         return '${v.round()}';
       case 'jumps':

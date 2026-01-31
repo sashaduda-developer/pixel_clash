@@ -37,7 +37,7 @@ class EnemyComponent extends PositionComponent
   int get hp => _hp;
   int get maxHp => _maxHp;
   bool get isBoss => false;
-  String get bossName => 'Boss';
+  String get bossName => game.l10n.t('boss_generic');
 
   bool _isDead = false;
   bool _showHpBar = false;

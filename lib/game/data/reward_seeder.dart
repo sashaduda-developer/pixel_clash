@@ -1160,68 +1160,6 @@ class RewardSeeder {
     ];
   }
 
-  /// Варианты предмета по редкости.
-  static List<RewardDefinitionsCompanion> _itemVariants({
-    required String source,
-    required String id,
-    required String titleKey,
-    required String descKey,
-    required String iconKey,
-    required String paramKey,
-    required Object common,
-    required Object rare,
-    required Object epic,
-    required Object legendary,
-    double weight = 1,
-  }) {
-    return [
-      _row(
-        source: source,
-        id: id,
-        kind: 'item',
-        rarity: 'common',
-        weight: weight,
-        titleKey: titleKey,
-        descKey: descKey,
-        iconKey: iconKey,
-        params: {paramKey: common},
-      ),
-      _row(
-        source: source,
-        id: id,
-        kind: 'item',
-        rarity: 'rare',
-        weight: weight,
-        titleKey: titleKey,
-        descKey: descKey,
-        iconKey: iconKey,
-        params: {paramKey: rare},
-      ),
-      _row(
-        source: source,
-        id: id,
-        kind: 'item',
-        rarity: 'epic',
-        weight: weight,
-        titleKey: titleKey,
-        descKey: descKey,
-        iconKey: iconKey,
-        params: {paramKey: epic},
-      ),
-      _row(
-        source: source,
-        id: id,
-        kind: 'item',
-        rarity: 'legendary',
-        weight: weight,
-        titleKey: titleKey,
-        descKey: descKey,
-        iconKey: iconKey,
-        params: {paramKey: legendary},
-      ),
-    ];
-  }
-
   static List<RewardDefinitionsCompanion> _itemVariantsMap({
     required String source,
     required String id,

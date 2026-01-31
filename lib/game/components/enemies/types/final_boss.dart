@@ -15,7 +15,7 @@ class FinalBossComponent extends EnemyComponent {
   bool get isBoss => true;
 
   @override
-  String get bossName => 'Portal Overlord';
+  String get bossName => game.l10n.t('boss_portal_overlord');
 
   @override
   Color get baseColor => const Color(0xFFD32F2F);

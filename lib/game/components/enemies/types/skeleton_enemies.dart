@@ -164,8 +164,8 @@ class ArmoredSkeletonEnemyComponent extends AnimatedEnemyComponent {
     required super.damage,
     required super.scoreReward,
     required super.xpReward,
-    AnimatedEnemyConfig config = _armoredSkeletonConfig,
-  }) : super(config: config);
+    super.config = _armoredSkeletonConfig,
+  });
 
   @override
   Color get baseColor => const Color(0xFF9E9E9E);
@@ -226,8 +226,8 @@ class GreatswordSkeletonEnemyComponent extends AnimatedEnemyComponent {
     required super.damage,
     required super.scoreReward,
     required super.xpReward,
-    AnimatedEnemyConfig config = _greatswordSkeletonConfig,
-  }) : super(config: config);
+    super.config = _greatswordSkeletonConfig,
+  });
 
   @override
   Color get baseColor => const Color(0xFF8D8D8D);

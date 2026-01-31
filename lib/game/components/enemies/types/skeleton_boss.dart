@@ -52,7 +52,7 @@ const AnimatedEnemyConfig _greatswordSkeletonBossConfig = AnimatedEnemyConfig(
   attackDelaySec: 0.22,
 );
 
-/// Р‘Р°Р·РѕРІС‹Р№ Р±РѕСЃСЃ-СЃРєРµР»РµС‚ (РїРѕРєР° Р±РµР· СЃРїРѕСЃРѕР±РЅРѕСЃС‚РµР№).
+/// Base skeleton boss (no abilities yet).
 abstract class _SkeletonBossBase extends AnimatedEnemyComponent {
   _SkeletonBossBase({
     required super.config,
@@ -103,7 +103,7 @@ class SkeletonBossComponent extends _SkeletonBossBase {
   }) : super(config: _skeletonBossConfig);
 
   @override
-  String get bossName => 'Король скелетов';
+  String get bossName => game.l10n.t('boss_skeleton_king');
 }
 
 class ArmoredSkeletonBossComponent extends _SkeletonBossBase {
@@ -117,7 +117,7 @@ class ArmoredSkeletonBossComponent extends _SkeletonBossBase {
   }) : super(config: _armoredSkeletonBossConfig);
 
   @override
-  String get bossName => 'РљРѕСЂРѕР»СЊ Р±СЂРѕРЅРёСЂРѕРІР°РЅРЅС‹С… СЃРєРµР»РµС‚РѕРІ';
+  String get bossName => game.l10n.t('boss_armored_skeleton_king');
 }
 
 class GreatswordSkeletonBossComponent extends _SkeletonBossBase {
@@ -131,5 +131,5 @@ class GreatswordSkeletonBossComponent extends _SkeletonBossBase {
   }) : super(config: _greatswordSkeletonBossConfig);
 
   @override
-  String get bossName => 'РљРѕСЂРѕР»СЊ РґРІСѓСЂСѓС‡РЅС‹С… СЃРєРµР»РµС‚РѕРІ';
+  String get bossName => game.l10n.t('boss_greatsword_skeleton_king');
 }

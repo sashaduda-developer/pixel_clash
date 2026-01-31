@@ -53,7 +53,7 @@ class PhoenixHeartBuff extends Buff implements IncomingDamageModifier {
       DamageNumberComponent(
         position: owner.position + Vector2(0, -24),
         value: 0,
-        label: 'ФЕНИКС',
+        label: owner.game.l10n.t('combat_phoenix'),
         color: const Color(0xFFFFD54F),
         scaleFactor: 1.1,
       ),

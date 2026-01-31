@@ -423,7 +423,7 @@ class PlayerComponent extends PositionComponent
         DamageNumberComponent(
           position: position + Vector2(0, -24),
           value: 0,
-          label: 'MISS',
+          label: game.l10n.t('combat_miss'),
           color: const Color(0xFFB0BEC5),
           scaleFactor: 0.95,
         ),

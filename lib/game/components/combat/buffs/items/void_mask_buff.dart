@@ -4,7 +4,6 @@ import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 import 'package:pixel_clash/game/components/combat/buff.dart';
 import 'package:pixel_clash/game/components/combat/combat_event.dart';
-import 'package:pixel_clash/game/components/combat/rarity.dart';
 import 'package:pixel_clash/game/components/player/player_component.dart';
 import 'package:pixel_clash/game/ui/damage_number_component.dart';
 
@@ -57,7 +56,7 @@ class VoidMaskBuff extends Buff implements IncomingDamageModifier {
       DamageNumberComponent(
         position: owner.position + Vector2(0, -24),
         value: 0,
-        label: 'ПУСТОТА',
+        label: owner.game.l10n.t('combat_void'),
         color: const Color(0xFFB39DDB),
       ),
     );

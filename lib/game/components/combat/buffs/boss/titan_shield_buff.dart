@@ -41,7 +41,7 @@ class TitanShieldBuff extends Buff implements IncomingDamageModifier {
       DamageNumberComponent(
         position: owner.position + Vector2(0, -24),
         value: 0,
-        label: 'ЩИТ',
+        label: owner.game.l10n.t('combat_shield'),
         color: const Color(0xFF90CAF9),
       ),
     );
