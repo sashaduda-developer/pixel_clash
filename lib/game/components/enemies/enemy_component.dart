@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:pixel_clash/game/components/combat/combat_event.dart';
 import 'package:pixel_clash/game/components/combat/damageable.dart';
 import 'package:pixel_clash/game/components/player/player_component.dart';
+import 'package:pixel_clash/game/components/interactables/solid_obstacle.dart';
 import 'package:pixel_clash/game/components/xp/xp_crystal_component.dart';
 import 'package:pixel_clash/game/pixel_clash_game.dart';
 import 'package:pixel_clash/game/ui/crit_lightning_component.dart';
@@ -60,6 +61,10 @@ class EnemyComponent extends PositionComponent
   double _burnFxTimer = 0;
   double _bleedLeft = 0;
   double _bleedFxTimer = 0;
+
+  // Простое избегание препятствий.
+  Vector2 _avoidDir = Vector2.zero();
+  double _avoidTimeLeft = 0;
 
   // Последний атакующий (для EnemyKilledEvent).
   PositionComponent? _lastAttacker;
@@ -218,6 +223,7 @@ class EnemyComponent extends PositionComponent
     _burnLeft = max(0, _burnLeft - dt);
     _bleedLeft = max(0, _bleedLeft - dt);
     _burnPhase += dt * 8.0;
+    _avoidTimeLeft = max(0, _avoidTimeLeft - dt);
   }
 
   /// Визуальные эффекты дотов (поджог/кровотечение).
@@ -257,11 +263,21 @@ class EnemyComponent extends PositionComponent
     if (_freezeLeft > 0 || _stunLeft > 0) return;
 
     final dir = (p.position - position);
-    if (dir.length2 > 0.001) {
-      dir.normalize();
-      final slowMult = (_slowLeft > 0) ? (1.0 - _slowPct) : 1.0;
-      position += dir * speed * slowMult * dt;
+    if (dir.length2 <= 0.001) return;
+
+    dir.normalize();
+    var moveDir = dir;
+    if (_avoidTimeLeft > 0 && _avoidDir.length2 > 0.001) {
+      // Небольшое смешивание направления к игроку и ухода от препятствия.
+      final blended = (dir * 0.6) + (_avoidDir * 0.8);
+      if (blended.length2 > 0.001) {
+        blended.normalize();
+        moveDir = blended;
+      }
     }
+
+    final slowMult = (_slowLeft > 0) ? (1.0 - _slowPct) : 1.0;
+    position += moveDir * speed * slowMult * dt;
   }
 
   // ===== status effects =====
@@ -358,6 +374,10 @@ class EnemyComponent extends PositionComponent
       _resolvePlayerOverlap(other);
       _tryAttack(other);
     }
+
+    if (other is SolidObstacle) {
+      _resolveObstacleCollision(other.collisionRect);
+    }
   }
 
   @override
@@ -368,6 +388,10 @@ class EnemyComponent extends PositionComponent
     if (other is PlayerComponent) {
       _resolvePlayerOverlap(other);
       _tryAttack(other);
+    }
+
+    if (other is SolidObstacle) {
+      _resolveObstacleCollision(other.collisionRect);
     }
   }
 
@@ -424,6 +448,53 @@ class EnemyComponent extends PositionComponent
     dir.normalize();
     position.add(dir * overlap);
     position = game.worldMap.clampToMap(position);
+  }
+
+
+  void _resolveObstacleCollision(Rect obstacleRect) {
+    final enemyRect = _collisionRect();
+    if (!enemyRect.overlaps(obstacleRect)) return;
+
+    final enemyCenter = enemyRect.center;
+    final obstacleCenter = obstacleRect.center;
+    final dx = enemyCenter.dx - obstacleCenter.dx;
+    final dy = enemyCenter.dy - obstacleCenter.dy;
+
+    final overlapX = (obstacleRect.width / 2 + enemyRect.width / 2) - dx.abs();
+    final overlapY = (obstacleRect.height / 2 + enemyRect.height / 2) - dy.abs();
+    if (overlapX <= 0 || overlapY <= 0) return;
+
+    const slop = 0.6;
+    final pushXMag = overlapX - slop;
+    final pushYMag = overlapY - slop;
+    if (pushXMag <= 0 || pushYMag <= 0) return;
+
+    if (overlapX < overlapY) {
+      final pushX = (dx == 0) ? pushXMag : dx.sign * pushXMag;
+      position.add(Vector2(pushX, 0));
+    } else {
+      final pushY = (dy == 0) ? pushYMag : dy.sign * pushYMag;
+      position.add(Vector2(0, pushY));
+    }
+
+    position = game.worldMap.clampToMap(position);
+
+    // Запоминаем направление ухода от препятствия, чтобы обойти его.
+    final away = Vector2(dx, dy);
+    if (away.length2 > 0.001) {
+      away.normalize();
+      _avoidDir = away;
+      _avoidTimeLeft = 0.35;
+    }
+  }
+
+  Rect _collisionRect() {
+    final radius = _hitbox.radius;
+    return Rect.fromCenter(
+      center: Offset(position.x, position.y),
+      width: radius * 2,
+      height: radius * 2,
+    );
   }
 
   @override

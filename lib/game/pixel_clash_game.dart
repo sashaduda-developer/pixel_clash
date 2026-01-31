@@ -39,20 +39,19 @@ import 'package:pixel_clash/game/rewards/reward_definition.dart';
 import 'package:pixel_clash/game/rewards/upgrade_registry.dart';
 import 'package:pixel_clash/game/run/run_modifiers.dart';
 import 'package:pixel_clash/game/ui/overlays.dart';
-import 'package:tiled/tiled.dart';
 
 class PixelClashGame extends FlameGame with HasCollisionDetection {
   PixelClashGame();
 
   static const int requiredKeys = 3;
-  static const Set<int> _mapChestTileIds = {21, 28};
-  static const Set<int> _mapAltarTileIds = {42, 43, 49, 50};
 
   final int seed = DateTime.now().millisecondsSinceEpoch;
   late final Random rng = Random(seed);
+
   int mapIndex = 0;
 
   late final WorldMap worldMap;
+
   late final CameraComponent cam;
   bool _cameraReady = false;
 
@@ -61,6 +60,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
 
   late final BiomeTimer biomeTimer;
   late final ThreatSystem threatSystem;
+
   late final ScoreSystem scoreSystem;
   late final EnemySpawner enemySpawner;
 
@@ -71,7 +71,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
   // Локализация
   final L10n l10n = L10n(initial: AppLocale.ru);
 
-  // HUD ValueNotifiers
+  // Значения HUD (ValueNotifier)
   final ValueNotifier<int> score = ValueNotifier<int>(0);
   final ValueNotifier<int> threatLevel = ValueNotifier<int>(0);
   final ValueNotifier<double> timeLeft = ValueNotifier<double>(0);
@@ -84,13 +84,12 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
   final ValueNotifier<double> playerMana = ValueNotifier<double>(0);
   final ValueNotifier<double> playerMaxMana = ValueNotifier<double>(1);
 
-  // Boss HUD
+  // HUD босса
   final ValueNotifier<int> bossHp = ValueNotifier<int>(0);
   final ValueNotifier<int> bossMaxHp = ValueNotifier<int>(0);
   final ValueNotifier<String> bossName = ValueNotifier<String>('');
   final ValueNotifier<String> announcementText = ValueNotifier<String>('');
 
-  /// Слоты активных способностей (id или null).
   final ValueNotifier<List<String?>> abilitySlots =
       ValueNotifier<List<String?>>(List<String?>.filled(4, null));
 
@@ -103,18 +102,19 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
   final List<RewardSource> _rewardQueue = <RewardSource>[];
   bool _rewardOverlayOpen = false;
 
-  // ===== Build/Upgrades =====
+  // ===== Прогресс и апгрейды =====
   late final AppDatabase db;
   late final UpgradeRegistry upgradeRegistry;
   late final PlayerBuildState buildState;
   late final RewardRepository rewardRepository;
   final RunModifiers runModifiers = RunModifiers();
 
-  // ===== HIT-STOP =====
+  // ===== Hit-stop =====
   bool _hitStopInProgress = false;
   double _hitStopCooldown = 0;
   bool _firstBossSpawned = false;
   bool _firstBossWarned = false;
+
   bool _firstBossKeyDropped = false;
   bool _finalBossSpawned = false;
   bool _finalBossDefeated = false;
@@ -123,7 +123,6 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
   bool _swarmWarned = false;
   Timer? _announcementTimer;
 
-  /// Лок паузы: когда открыт выбор награды, никто не имеет права снимать паузу.
   bool _rewardPauseLock = false;
   final Set<String> _chestSeenRewardIds = <String>{};
   int _chestCommonStreak = 0;
@@ -133,12 +132,16 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
 
   // ===== CAMERA SHAKE (только на крит) =====
   double _shakeLeft = 0;
-  double _shakeStrength = 0;
+  final double _shakeStrength = 0;
 
   @override
+
+  /// Описание метода backgroundColor.
   Color backgroundColor() => const Color(0xFF1A1A1A);
 
   @override
+
+  /// Описание метода onLoad.
   Future<void> onLoad() async {
     await super.onLoad();
 
@@ -207,11 +210,18 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     add(biomeTimer);
     add(xpSystem);
     add(enemySpawner);
-
+    add(
+      FpsTextComponent(
+        position: Vector2(10, 10),
+        anchor: Anchor.topLeft,
+      ),
+    );
     overlays.add(Overlays.heroSelect);
   }
 
   @override
+
+  /// Описание метода update.
   void update(double dt) {
     super.update(dt);
 
@@ -226,12 +236,14 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     _applyPixelPerfectCamera();
   }
 
+  /// Описание метода _applyPixelPerfectCamera.
   void _applyPixelPerfectCamera() {
     if (!_cameraReady) return;
     _snapCameraZoomToTileGrid();
     _snapCameraPosition();
   }
 
+  /// Описание метода _snapCameraZoomToTileGrid.
   void _snapCameraZoomToTileGrid() {
     final viewportScale = _viewportScale();
     if (viewportScale <= 0) return;
@@ -253,6 +265,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     }
   }
 
+  /// Описание метода _snapCameraPosition.
   void _snapCameraPosition() {
     final viewportScale = _viewportScale();
     if (viewportScale <= 0) return;
@@ -289,6 +302,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     }
   }
 
+  /// Описание метода _viewportScale.
   double _viewportScale() {
     final viewport = cam.viewport;
     if (viewport is FixedResolutionViewport) {
@@ -299,9 +313,10 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
 
   // ===== public helpers =====
 
-  /// Нужен для жёсткой паузы логики поверх оверлеев наград.
+  /// Геттер isRewardPauseActive.
   bool get isRewardPauseActive => _rewardPauseLock;
 
+  /// Описание метода requestHitStop.
   void requestHitStop(double duration) {
     // Если открыт выбор награды — никакого hit-stop и главное:
     // нельзя ставить на паузу/снимать паузу таймером, иначе сломаем reward overlay.
@@ -328,13 +343,9 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     );
   }
 
-  void requestCritShake() {
-    _shakeLeft = 0.10;
-    _shakeStrength = 1.8;
-  }
-
   // ===== start/reset =====
 
+  /// Описание метода startGame.
   Future<void> startGame(HeroDefinition hero) async {
     overlays.remove(Overlays.heroSelect);
 
@@ -405,6 +416,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     resumeEngine();
   }
 
+  /// Описание метода _spawnFirstBoss.
   void _spawnFirstBoss() {
     worldMap.children.whereType<SkeletonBossComponent>().forEach((b) => b.removeFromParent());
     worldMap.children
@@ -444,6 +456,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     worldMap.add(boss);
   }
 
+  /// Описание метода _spawnFinalBoss.
   void _spawnFinalBoss() {
     worldMap.children.whereType<FinalBossComponent>().forEach((b) => b.removeFromParent());
     worldMap.children.whereType<LancerBossComponent>().forEach((b) => b.removeFromParent());
@@ -464,6 +477,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     );
   }
 
+  /// Описание метода _runProgress.
   double _runProgress() {
     const total = GameConstants.biomeDurationSeconds;
     if (total <= 0) return 0.0;
@@ -471,6 +485,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     return (1.0 - (left / total)).clamp(0.0, 1.0);
   }
 
+  /// Описание метода _bossScales.
   (double, double, double) _bossScales() {
     final progress = _runProgress();
     final progressCurve = pow(progress, 1.4).toDouble();
@@ -484,10 +499,12 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     return (hpScale, dmgScale, speedScale);
   }
 
+  /// Описание метода mapSeedForIndex.
   int mapSeedForIndex(int index) {
     return seed ^ (index * 1000003);
   }
 
+  /// Описание метода spawnStaticInteractablesForCurrentMap.
   void spawnStaticInteractablesForCurrentMap() {
     worldMap.children.whereType<ChestComponent>().forEach((c) => c.removeFromParent());
     worldMap.children.whereType<AltarComponent>().forEach((c) => c.removeFromParent());
@@ -501,72 +518,145 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     final usedRects = <Rect>[];
     final keyPositions = <Vector2>[];
     final avoidPoint = player?.position ?? (worldMap.mapSize / 2);
+    final collisionRects = worldMap.collisionRects;
 
-    final mapSpawns = _spawnMapInteractables(used: used, usedRects: usedRects);
-    final hasMapChests = mapSpawns.chests > 0;
-    final hasMapAltars = mapSpawns.altars > 0;
-
-    final portalPos =
-        _findFreeInteractablePoint(mapRng, used, avoidPoint) ?? _randomPointOnMap(mapRng);
+    final portalSize = Vector2(72, 72);
+    final portalPos = _findFreeSizedPoint(
+          mapRng,
+          used,
+          usedRects,
+          collisionRects,
+          portalSize,
+          avoidPoint,
+        ) ??
+        _randomPointOnMap(mapRng);
     used.add(portalPos);
+    usedRects.add(
+      Rect.fromCenter(
+        center: Offset(portalPos.x, portalPos.y),
+        width: portalSize.x,
+        height: portalSize.y,
+      ),
+    );
     final portal = PortalComponent(position: portalPos);
     portal.setLocked(keysFound.value < requiredKeys);
     _portal = portal;
     worldMap.add(portal);
 
     const keyCount = 2;
+    final keySize = Vector2(28, 18);
     for (var i = 0; i < keyCount; i++) {
-      final keyPos = _findFreeKeyPoint(mapRng, used, keyPositions, avoidPoint) ??
-          _findFreeKeyPoint(
+      final keyPos = _findFreeSizedPoint(
             mapRng,
             used,
-            keyPositions,
+            usedRects,
+            collisionRects,
+            keySize,
             avoidPoint,
-            minKeyDist: GameConstants.keyMinDistanceBetween * 0.6,
+            minBetween: GameConstants.keyMinDistanceBetween,
+            extraAvoid: keyPositions,
+          ) ??
+          _findFreeSizedPoint(
+            mapRng,
+            used,
+            usedRects,
+            collisionRects,
+            keySize,
+            avoidPoint,
+            minBetween: GameConstants.keyMinDistanceBetween * 0.6,
+            extraAvoid: keyPositions,
           ) ??
           _randomPointOnMap(mapRng);
       used.add(keyPos);
       keyPositions.add(keyPos);
+      usedRects.add(
+        Rect.fromCenter(
+          center: Offset(keyPos.x, keyPos.y),
+          width: keySize.x,
+          height: keySize.y,
+        ),
+      );
       worldMap.add(KeyComponent(position: keyPos));
     }
 
-    if (!hasMapChests) {
-      const chestCount = 7;
-      for (var i = 0; i < chestCount; i++) {
-        final pos = _findFreeInteractablePoint(mapRng, used, avoidPoint);
-        if (pos == null) continue;
-        used.add(pos);
-        worldMap.add(
-          ChestComponent(
-            position: pos,
-            openTime: 2.0,
-            interactRadius: 54,
-          ),
-        );
-      }
+    const chestCount = 7;
+    final chestSize = Vector2(48, 48);
+    for (var i = 0; i < chestCount; i++) {
+      final pos = _findFreeSizedPoint(
+        mapRng,
+        used,
+        usedRects,
+        collisionRects,
+        chestSize,
+        avoidPoint,
+      );
+      if (pos == null) continue;
+      used.add(pos);
+      usedRects.add(
+        Rect.fromCenter(
+          center: Offset(pos.x, pos.y),
+          width: chestSize.x,
+          height: chestSize.y,
+        ),
+      );
+      worldMap.add(
+        ChestComponent(
+          position: pos,
+          openTime: 2.0,
+          interactRadius: 62,
+        ),
+      );
     }
 
-    if (!hasMapAltars) {
-      const altarCount = 4;
-      for (var i = 0; i < altarCount; i++) {
-        final pos = _findFreeInteractablePoint(mapRng, used, avoidPoint);
-        if (pos == null) continue;
-        used.add(pos);
-        worldMap.add(
-          AltarComponent(
-            position: pos,
-            openTime: 2.2,
-            interactRadius: 58,
-          ),
-        );
-      }
+    const altarCount = 4;
+    final altarSize = Vector2(96 * 0.82, 144 * 0.82);
+    for (var i = 0; i < altarCount; i++) {
+      final pos = _findFreeSizedPoint(
+        mapRng,
+        used,
+        usedRects,
+        collisionRects,
+        altarSize,
+        avoidPoint,
+      );
+      if (pos == null) continue;
+      used.add(pos);
+      usedRects.add(
+        Rect.fromCenter(
+          center: Offset(pos.x, pos.y),
+          width: altarSize.x,
+          height: altarSize.y,
+        ),
+      );
+      worldMap.add(
+        AltarComponent(
+          position: pos,
+          openTime: 2.2,
+          interactRadius: 58,
+        ),
+      );
     }
 
     const healPotionCount = 10;
+    final potionSize = Vector2.all(20);
     for (var i = 0; i < healPotionCount; i++) {
-      final pos = _findFreeInteractablePoint(mapRng, used, avoidPoint);
+      final pos = _findFreeSizedPoint(
+        mapRng,
+        used,
+        usedRects,
+        collisionRects,
+        potionSize,
+        avoidPoint,
+      );
       if (pos == null) continue;
       used.add(pos);
+      usedRects.add(
+        Rect.fromCenter(
+          center: Offset(pos.x, pos.y),
+          width: potionSize.x,
+          height: potionSize.y,
+        ),
+      );
       worldMap.add(
         HealPotionComponent(
           position: pos,
@@ -576,9 +666,23 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
 
     const shieldPotionCount = 4;
     for (var i = 0; i < shieldPotionCount; i++) {
-      final pos = _findFreeInteractablePoint(mapRng, used, avoidPoint);
+      final pos = _findFreeSizedPoint(
+        mapRng,
+        used,
+        usedRects,
+        collisionRects,
+        potionSize,
+        avoidPoint,
+      );
       if (pos == null) continue;
       used.add(pos);
+      usedRects.add(
+        Rect.fromCenter(
+          center: Offset(pos.x, pos.y),
+          width: potionSize.x,
+          height: potionSize.y,
+        ),
+      );
       worldMap.add(
         ShieldPotionComponent(
           position: pos,
@@ -587,6 +691,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     }
   }
 
+  /// Описание метода _randomPointOnMap.
   Vector2 _randomPointOnMap(Random r) {
     const margin = 80.0;
     final w = worldMap.mapSize.x;
@@ -598,160 +703,60 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     return Vector2(x, y);
   }
 
-  Vector2? _findFreeInteractablePoint(Random r, List<Vector2> used, Vector2 avoidPoint) {
-    const minFromPlayer = GameConstants.interactableMinDistFromPlayer;
-    const minBetween = GameConstants.interactableMinDistBetween;
-    const maxAttempts = GameConstants.interactableSpawnAttempts;
-
-    for (var i = 0; i < maxAttempts; i++) {
-      final p = _randomPointOnMap(r);
-      if (p.distanceToSquared(avoidPoint) < minFromPlayer * minFromPlayer) {
-        continue;
-      }
-
-      var ok = true;
-      for (final u in used) {
-        if (p.distanceToSquared(u) < minBetween * minBetween) {
-          ok = false;
-          break;
-        }
-      }
-
-      if (ok) return p;
-    }
-
-    return null;
-  }
-
-  Vector2? _findFreeKeyPoint(
+  /// Описание метода _findFreeSizedPoint.
+  Vector2? _findFreeSizedPoint(
     Random r,
     List<Vector2> used,
-    List<Vector2> keys,
+    List<Rect> usedRects,
+    List<Rect> collisionRects,
+    Vector2 size,
     Vector2 avoidPoint, {
-    double? minKeyDist,
+    double? minFromPlayer,
+    double? minBetween,
+    List<Vector2>? extraAvoid,
   }) {
-    const minFromPlayer = GameConstants.interactableMinDistFromPlayer;
-    const minBetween = GameConstants.interactableMinDistBetween;
+    final minFromP = minFromPlayer ?? GameConstants.interactableMinDistFromPlayer;
+    final minBetweenP = minBetween ?? GameConstants.interactableMinDistBetween;
     const maxAttempts = GameConstants.interactableSpawnAttempts;
-    final minKeyDistance = minKeyDist ?? GameConstants.keyMinDistanceBetween;
 
     for (var i = 0; i < maxAttempts; i++) {
       final p = _randomPointOnMap(r);
-      if (p.distanceToSquared(avoidPoint) < minFromPlayer * minFromPlayer) {
+      if (p.distanceToSquared(avoidPoint) < minFromP * minFromP) {
         continue;
       }
 
       var ok = true;
       for (final u in used) {
-        if (p.distanceToSquared(u) < minBetween * minBetween) {
+        if (p.distanceToSquared(u) < minBetweenP * minBetweenP) {
           ok = false;
           break;
         }
       }
       if (!ok) continue;
 
-      for (final k in keys) {
-        if (p.distanceToSquared(k) < minKeyDistance * minKeyDistance) {
-          ok = false;
-          break;
+      if (extraAvoid != null) {
+        for (final e in extraAvoid) {
+          if (p.distanceToSquared(e) < minBetweenP * minBetweenP) {
+            ok = false;
+            break;
+          }
         }
+        if (!ok) continue;
       }
 
-      if (ok) return p;
-    }
-
-    return null;
-  }
-
-  ({int chests, int altars}) _spawnMapInteractables({
-    required List<Vector2> used,
-    required List<Rect> usedRects,
-  }) {
-    final objects = worldMap.objectsFromLayer(WorldMap.layerObjects);
-    var chestCount = 0;
-    var altarCount = 0;
-
-    for (final obj in objects) {
-      if (!obj.visible) continue;
-      if (obj.isPoint || obj.isPolygon || obj.isPolyline) continue;
-
-      final kind = _resolveMapObjectKind(obj);
-      if (kind == null) continue;
-
-      final size = (kind == _MapObjectKind.chest) ? Vector2(48, 96) : Vector2(96, 96);
-      final center = _mapObjectCenter(obj, size);
       final rect = Rect.fromCenter(
-        center: Offset(center.x, center.y),
+        center: Offset(p.x, p.y),
         width: size.x,
         height: size.y,
       );
 
       if (_overlapsAny(rect, usedRects)) continue;
+      if (_overlapsAny(rect, collisionRects)) continue;
 
-      used.add(center);
-      usedRects.add(rect);
-
-      if (kind == _MapObjectKind.chest) {
-        chestCount += 1;
-        worldMap.add(
-          ChestComponent(
-            position: center,
-            openTime: 2.0,
-            interactRadius: 54,
-          ),
-        );
-      } else {
-        altarCount += 1;
-        worldMap.add(
-          AltarComponent(
-            position: center,
-            openTime: 2.2,
-            interactRadius: 58,
-          ),
-        );
-      }
+      return p;
     }
 
-    return (chests: chestCount, altars: altarCount);
-  }
-
-  _MapObjectKind? _resolveMapObjectKind(TiledObject obj) {
-    final type = obj.type.toLowerCase();
-    final name = obj.name.toLowerCase();
-    final tag = type.isNotEmpty ? type : name;
-
-    if (tag.contains('chest') || tag.contains('coffin') || tag.contains('casket')) {
-      return _MapObjectKind.chest;
-    }
-    if (tag.contains('altar') ||
-        tag.contains('church') ||
-        tag.contains('chapel') ||
-        tag.contains('shrine')) {
-      return _MapObjectKind.altar;
-    }
-
-    final gid = obj.gid;
-    if (gid == null) return null;
-
-    final info = worldMap.gidInfo(gid);
-    if (info == null || info.tilesetName != 'Cemetery_Objects') return null;
-
-    if (_mapChestTileIds.contains(info.localId)) {
-      return _MapObjectKind.chest;
-    }
-    if (_mapAltarTileIds.contains(info.localId)) {
-      return _MapObjectKind.altar;
-    }
     return null;
-  }
-
-  Vector2 _mapObjectCenter(TiledObject obj, Vector2 size) {
-    final width = max(obj.width, size.x);
-    final height = max(obj.height, size.y);
-    if (obj.gid != null) {
-      return Vector2(obj.x + width / 2, obj.y - height / 2);
-    }
-    return Vector2(obj.x + width / 2, obj.y + height / 2);
   }
 
   bool _overlapsAny(Rect rect, List<Rect> others) {
@@ -761,6 +766,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     return false;
   }
 
+  /// Описание метода onKeyCollected.
   void onKeyCollected() {
     if (keysFound.value >= requiredKeys) return;
     keysFound.value += 1;
@@ -773,6 +779,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     }
   }
 
+  /// Описание метода onPortalCaptured.
   void onPortalCaptured() {
     if (_finalBossSpawned) return;
     _finalBossSpawned = true;
@@ -780,6 +787,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     _spawnFinalBoss();
   }
 
+  /// Описание метода onPortalEntered.
   void onPortalEntered() {
     if (_portalTransitionInProgress || !_finalBossDefeated) return;
     _portalTransitionInProgress = true;
@@ -787,12 +795,14 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     _portalTransitionInProgress = false;
   }
 
+  /// Описание метода _isFirstBoss.
   bool _isFirstBoss(EnemyComponent enemy) {
     return enemy is SkeletonBossComponent ||
         enemy is ArmoredSkeletonBossComponent ||
         enemy is GreatswordSkeletonBossComponent;
   }
 
+  /// Описание метода onEnemyKilled.
   void onEnemyKilled(EnemyComponent enemy) {
     if (_isFirstBoss(enemy) && !_firstBossKeyDropped) {
       _firstBossKeyDropped = true;
@@ -807,6 +817,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     }
   }
 
+  /// Описание метода _spawnBossKey.
   void _spawnBossKey(Vector2 pos) {
     final dropPos = worldMap.clampToMap(pos + Vector2(32, 0));
     worldMap.add(
@@ -818,6 +829,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     );
   }
 
+  /// Описание метода _advanceToNextMap.
   void _advanceToNextMap() {
     mapIndex += 1;
     keysFound.value = 0;
@@ -857,15 +869,17 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
 
   // ===== rewards entrypoints =====
 
+  /// Описание метода onChestOpened.
   Future<void> onChestOpened() async {
     _enqueueRewardOverlay(RewardSource.chest);
   }
 
+  /// Описание метода onAltarActivated.
   Future<void> onAltarActivated() async {
     _enqueueRewardOverlay(RewardSource.altar);
   }
 
-  /// Отдельный оверлей для награды босса.
+  /// Описание метода showBossReward.
   void showBossReward() {
     _enqueueRewardOverlay(RewardSource.boss);
   }
@@ -929,11 +943,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     return result;
   }
 
-  /// Унифицированная точка показа наград.
-  /// Важно:
-  /// - сначала ставим игру на паузу
-  /// - потом роллим награды
-  /// - если наград нет => паузу снимаем и ничего не показываем
+  /// Описание метода _openRewardOverlay.
   Future<void> _openRewardOverlay(RewardSource source) async {
     // Готовим показ награды и включаем паузу, если она еще не активна.
     _rewardOverlayOpen = true;
@@ -1013,7 +1023,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     }
   }
 
-  /// Вызывается UI после выбора карточки.
+  /// Описание метода applyRewardAndResume.
   void applyRewardAndResume(RewardDefinition reward) {
     reward.apply(this);
     if (reward.kind == RewardKind.item) {
@@ -1026,6 +1036,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     _finishRewardOverlay();
   }
 
+  /// Описание метода applyBossRewardAndResume.
   void applyBossRewardAndResume() {
     final reward = bossRewardChoice.value;
     if (reward == null) return;
@@ -1041,6 +1052,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     _finishRewardOverlay();
   }
 
+  /// Описание метода skipRewardAndResume.
   void skipRewardAndResume() {
     overlays.remove(Overlays.rewardPick);
     rewardChoices.value = <RewardDefinition>[];
@@ -1050,6 +1062,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
 
   // ===== HUD sync / lifecycle =====
 
+  /// Описание метода _syncPlayerStatsToHud.
   void _syncPlayerStatsToHud() {
     final p = player;
     if (p == null) {
@@ -1069,6 +1082,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     playerMaxMana.value = p.stats.maxMana;
   }
 
+  /// Описание метода _onBiomeTimeChanged.
   void _onBiomeTimeChanged(double t) {
     timeLeft.value = t;
 
@@ -1108,6 +1122,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     _spawnFirstBoss();
   }
 
+  /// Описание метода showAnnouncement.
   void showAnnouncement(String text, {double seconds = 2.0}) {
     announcementText.value = text;
     _announcementTimer?.cancel();
@@ -1117,20 +1132,21 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     );
   }
 
+  /// Описание метода setBossHud.
   void setBossHud(String name, int hp, int maxHp) {
     bossName.value = name;
     bossHp.value = hp;
     bossMaxHp.value = maxHp;
   }
 
+  /// Описание метода clearBossHud.
   void clearBossHud() {
     bossName.value = '';
     bossHp.value = 0;
     bossMaxHp.value = 0;
   }
 
-  /// Регистрирует активную способность в слоте (первый свободный).
-  /// Если уже есть — не меняем.
+  /// Описание метода assignAbilitySlot.
   void assignAbilitySlot(String abilityId) {
     final list = List<String?>.from(abilitySlots.value);
     if (list.contains(abilityId)) return;
@@ -1142,7 +1158,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     abilitySlots.value = list;
   }
 
-  /// Пытается активировать способность из слота.
+  /// Описание метода tryActivateAbilitySlot.
   bool tryActivateAbilitySlot(int slotIndex) {
     final p = player;
     if (p == null) return false;
@@ -1161,8 +1177,10 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     return ok;
   }
 
+  /// Описание метода notifyPlayerStatsChanged.
   void notifyPlayerStatsChanged() => _syncPlayerStatsToHud();
 
+  /// Описание метода onPlayerDied.
   void onPlayerDied() {
     enemySpawner.isPaused = true;
 
@@ -1174,11 +1192,13 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     overlays.add(Overlays.heroSelect);
   }
 
+  /// Описание метода _onBiomeTimeOver.
   void _onBiomeTimeOver() {
     enemySpawner.isPaused = true;
     overlays.add(Overlays.heroSelect);
   }
 
+  /// Описание метода _enqueueRewardOverlay.
   void _enqueueRewardOverlay(RewardSource source) {
     if (_rewardOverlayOpen ||
         overlays.isActive(Overlays.rewardPick) ||
@@ -1190,6 +1210,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     unawaited(_openRewardOverlay(source));
   }
 
+  /// Описание метода _finishRewardOverlay.
   void _finishRewardOverlay() {
     _rewardOverlayOpen = false;
 
@@ -1203,6 +1224,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     resumeEngine();
   }
 
+  /// Описание метода findNearestEnemyInRadius.
   EnemyComponent? findNearestEnemyInRadius(
     Vector2 center,
     double radius, {
@@ -1231,18 +1253,18 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
   }
 
   // ===== locale dev =====
+  /// Описание метода setLocaleRu.
   void setLocaleRu() => l10n.setLocale(AppLocale.ru);
+
+  /// Описание метода setLocaleEn.
   void setLocaleEn() => l10n.setLocale(AppLocale.en);
 
   @override
+
+  /// Описание метода onRemove.
   void onRemove() {
     // Закрываем DB при выгрузке игры.
     unawaited(db.close());
     super.onRemove();
   }
-}
-
-enum _MapObjectKind {
-  chest,
-  altar,
 }

@@ -1,42 +1,37 @@
 import 'dart:math';
-import 'dart:ui' as ui;
-
 import 'package:flame/cache.dart';
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
+import 'package:pixel_clash/game/components/interactables/interaction_aura_component.dart';
+import 'package:pixel_clash/game/components/interactables/solid_obstacle.dart';
 import 'package:pixel_clash/game/pixel_clash_game.dart';
 import 'package:pixel_clash/game/render/pixel_perfect.dart';
 
 /// Алтарь: когда игрок рядом N секунд — выдаёт магическую награду.
 class AltarComponent extends PositionComponent
-    with HasGameReference<PixelClashGame>, CollisionCallbacks {
+    with HasGameReference<PixelClashGame>, CollisionCallbacks, SolidObstacle {
   AltarComponent({
     required super.position,
     this.openTime = 2.2,
     this.interactRadius = 58,
   });
 
-  static const double _tileSize = 48;
-  static const int _tilesetColumns = 7;
-  static const String _tilesetPath = 'tiles/Cemetery_Objects.png';
-  static const int _churchTopLeftTileId = 42;
-  static const int _churchTopRightTileId = 43;
-  static const int _churchBottomLeftTileId = 49;
-  static const int _churchBottomRightTileId = 50;
-
-  static const String _wispPath = 'tiles/Wisp.png';
-  static const int _wispFrames = 15;
-  static const int _wispFramesPerRow = 3;
-  static const double _wispStepTime = 0.12;
-  static final Vector2 _wispFrameSize = Vector2(32, 48);
+  static const List<String> _framePaths = <String>[
+    'cemetery/objects/altar/altar0.png',
+    'cemetery/objects/altar/altar1.png',
+    'cemetery/objects/altar/altar2.png',
+    'cemetery/objects/altar/altar3.png',
+  ];
+  static const double _frameStepTime = 0.14;
+  static const double _spriteScale = 0.82;
+  static const double _hitboxBaseHeight = 48.0;
+  static const double _interactAnchorYOffset = 10.0;
 
   static final Images _mapImages = Images(prefix: 'assets/maps/');
-  static Sprite? _churchTopLeftSprite;
-  static Sprite? _churchTopRightSprite;
-  static Sprite? _churchBottomLeftSprite;
-  static Sprite? _churchBottomRightSprite;
-  static SpriteAnimation? _wispAnimation;
+  static SpriteAnimation? _altarAnimation;
+  static Vector2? _altarSpriteSize;
+  InteractionAuraComponent? _aura;
 
   final double openTime;
   final double interactRadius;
@@ -49,132 +44,62 @@ class AltarComponent extends PositionComponent
   @override
   Future<void> onLoad() async {
     await super.onLoad();
-    size = Vector2(_tileSize * 2, _tileSize * 2);
+    await _ensureAnimation();
+    final baseSize = _altarSpriteSize ?? Vector2(96, 144);
+    size = baseSize * _spriteScale;
     anchor = Anchor.center;
+    priority = 5;
 
-    await _ensureSprites();
-    await _ensureWispAnimation();
-    _buildSprites();
-    _buildWisps();
+    _buildAura();
+    _buildSprite();
     _buildHitbox();
   }
 
-  Future<void> _ensureSprites() async {
-    if (_churchTopLeftSprite != null &&
-        _churchTopRightSprite != null &&
-        _churchBottomLeftSprite != null &&
-        _churchBottomRightSprite != null) {
-      return;
-    }
-
-    final image = await _mapImages.load(_tilesetPath);
-    _churchTopLeftSprite ??= _spriteFromTile(image, _churchTopLeftTileId);
-    _churchTopRightSprite ??= _spriteFromTile(image, _churchTopRightTileId);
-    _churchBottomLeftSprite ??= _spriteFromTile(image, _churchBottomLeftTileId);
-    _churchBottomRightSprite ??= _spriteFromTile(image, _churchBottomRightTileId);
+  void _buildAura() {
+    final aura = InteractionAuraComponent(
+      radius: interactRadius,
+      color: const Color(0xFFE16B6B),
+    )..priority = -1;
+    aura.position = _interactionAnchor();
+    add(aura);
+    _aura = aura;
   }
 
-  Future<void> _ensureWispAnimation() async {
-    if (_wispAnimation != null) return;
-    final image = await _mapImages.load(_wispPath);
-    _wispAnimation = SpriteAnimation.fromFrameData(
-      image,
-      SpriteAnimationData.sequenced(
-        amount: _wispFrames,
-        stepTime: _wispStepTime,
-        textureSize: _wispFrameSize,
-        amountPerRow: _wispFramesPerRow,
-      ),
+  Future<void> _ensureAnimation() async {
+    if (_altarAnimation != null && _altarSpriteSize != null) return;
+    final images = await _mapImages.loadAll(_framePaths);
+    if (images.isEmpty) return;
+    _altarSpriteSize ??= Vector2(
+      images.first.width.toDouble(),
+      images.first.height.toDouble(),
+    );
+    final sprites = images.map(Sprite.new).toList();
+    _altarAnimation ??= SpriteAnimation.spriteList(
+      sprites,
+      stepTime: _frameStepTime,
     );
   }
 
-  Sprite _spriteFromTile(ui.Image image, int tileId) {
-    final col = tileId % _tilesetColumns;
-    final row = tileId ~/ _tilesetColumns;
-    final src = Vector2(col * _tileSize, row * _tileSize);
-    return Sprite(
-      image,
-      srcPosition: src,
-      srcSize: Vector2.all(_tileSize),
-    );
-  }
-
-  void _buildSprites() {
-    final tl = _churchTopLeftSprite;
-    final tr = _churchTopRightSprite;
-    final bl = _churchBottomLeftSprite;
-    final br = _churchBottomRightSprite;
-    if (tl == null || tr == null || bl == null || br == null) return;
-
+  void _buildSprite() {
+    final animation = _altarAnimation;
+    if (animation == null) return;
     add(
-      SpriteComponent(
-        sprite: tl,
-        size: Vector2(_tileSize, _tileSize),
+      SpriteAnimationComponent(
+        animation: animation.clone(),
+        size: size,
         anchor: Anchor.topLeft,
         position: Vector2.zero(),
-        paint: pixelPaint(),
-      ),
-    );
-    add(
-      SpriteComponent(
-        sprite: tr,
-        size: Vector2(_tileSize, _tileSize),
-        anchor: Anchor.topLeft,
-        position: Vector2(_tileSize, 0),
-        paint: pixelPaint(),
-      ),
-    );
-    add(
-      SpriteComponent(
-        sprite: bl,
-        size: Vector2(_tileSize, _tileSize),
-        anchor: Anchor.topLeft,
-        position: Vector2(0, _tileSize),
-        paint: pixelPaint(),
-      ),
-    );
-    add(
-      SpriteComponent(
-        sprite: br,
-        size: Vector2(_tileSize, _tileSize),
-        anchor: Anchor.topLeft,
-        position: Vector2(_tileSize, _tileSize),
-        paint: pixelPaint(),
-      ),
-    );
-  }
-
-  void _buildWisps() {
-    final baseAnimation = _wispAnimation;
-    if (baseAnimation == null) return;
-
-    const wispOffsetY = 2.0;
-    const leftX = 0.0;
-    final rightX = size.x;
-    final y = size.y - wispOffsetY;
-
-    add(
-      SpriteAnimationComponent(
-        animation: baseAnimation.clone(),
-        size: _wispFrameSize,
-        anchor: Anchor.bottomCenter,
-        position: Vector2(leftX, y),
-        paint: pixelPaint(),
-      ),
-    );
-    add(
-      SpriteAnimationComponent(
-        animation: baseAnimation.clone(),
-        size: _wispFrameSize,
-        anchor: Anchor.bottomCenter,
-        position: Vector2(rightX, y),
         paint: pixelPaint(),
       ),
     );
   }
 
   void _buildHitbox() {
-    final hitboxSize = Vector2(size.x - 12, _tileSize - 12);
+    final hitboxHeight = max(8.0, min(_hitboxBaseHeight, size.y) - 12);
+    final hitboxSize = Vector2(
+      max(8.0, size.x - 12),
+      hitboxHeight,
+    );
     _hitbox = RectangleHitbox(
       size: hitboxSize,
       position: Vector2(
@@ -186,6 +111,14 @@ class AltarComponent extends PositionComponent
   }
 
   @override
+  Rect get collisionRect => _hitboxWorldRect();
+
+  Rect _hitboxWorldRect() {
+    final topLeft = position + _hitbox.position - (size / 2);
+    return Rect.fromLTWH(topLeft.x, topLeft.y, _hitbox.size.x, _hitbox.size.y);
+  }
+
+  @override
   void update(double dt) {
     super.update(dt);
     if (_activated) return;
@@ -193,7 +126,7 @@ class AltarComponent extends PositionComponent
     final p = game.player;
     if (p == null || p.isRemoving) return;
 
-    final dist2 = p.position.distanceToSquared(position);
+    final dist2 = p.position.distanceToSquared(_interactionCenterWorld());
     final r2 = interactRadius * interactRadius;
 
     if (dist2 <= r2) {
@@ -216,21 +149,28 @@ class AltarComponent extends PositionComponent
     if (!_activated && _progress > 0) {
       final t = (_progress / openTime).clamp(0.0, 1.0);
 
-      final center = Offset(size.x / 2, -12);
-      const radius = 10.0;
+      final center = Offset(size.x / 2, -20);
+      const radius = 11.0;
 
       final bg = Paint()
-        ..color = const Color(0x33000000)
+        ..color = const Color(0x22000000)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3;
 
-      final fg = Paint()
-        ..color = const Color(0xFF9FA8DA)
+      final glow = Paint()
+        ..color = const Color(0x55E16B6B)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 3
+        ..strokeWidth = 6
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+
+      final fg = Paint()
+        ..color = const Color(0xFFE16B6B)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3.2
         ..strokeCap = StrokeCap.round;
 
       canvas.drawCircle(center, radius, bg);
+      canvas.drawCircle(center, radius, glow);
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
         -pi / 2,
@@ -243,6 +183,17 @@ class AltarComponent extends PositionComponent
 
   void _activate() {
     game.onAltarActivated();
-    removeFromParent();
+    _aura?.removeFromParent();
+  }
+
+  Vector2 _interactionAnchor() {
+    return Vector2(
+      size.x / 2,
+      size.y - _hitboxBaseHeight * 0.5 + _interactAnchorYOffset,
+    );
+  }
+
+  Vector2 _interactionCenterWorld() {
+    return position + _interactionAnchor() - (size / 2);
   }
 }

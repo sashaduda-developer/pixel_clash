@@ -3,6 +3,7 @@ import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flame_tiled/flame_tiled.dart';
 import 'package:flutter/material.dart';
+import 'package:pixel_clash/game/components/interactables/solid_obstacle.dart';
 import 'package:pixel_clash/game/config/game_constants.dart';
 import 'package:pixel_clash/game/render/pixel_perfect.dart';
 
@@ -11,7 +12,7 @@ import 'package:pixel_clash/game/render/pixel_perfect.dart';
 class WorldMap extends World {
   final Vector2 mapSize = Vector2(GameConstants.mapWidth, GameConstants.mapHeight);
   static const String tiledMapFile = 'cemetery.tmx';
-  static const String tiledMapPrefix = 'assets/maps/';
+  static const String tiledMapPrefix = 'assets/maps/cemetery/';
   static final Images _tiledImages = Images(prefix: tiledMapPrefix);
   static final Vector2 tileSize = Vector2(48, 48);
   static const String layerGround = 'ground';
@@ -21,6 +22,9 @@ class WorldMap extends World {
   static const bool _debugDrawCollisions = false;
 
   TiledComponent? _tiled;
+  final List<Rect> _collisionRects = <Rect>[];
+
+  List<Rect> get collisionRects => _collisionRects;
 
   @override
   Future<void> onLoad() async {
@@ -32,42 +36,16 @@ class WorldMap extends World {
     final tiled = _tiled;
     if (tiled != null) {
       add(tiled);
+      _collisionRects.clear();
       _spawnCollidersFromLayer(layerCollisions);
     }
   }
 
-  /// РћРіСЂР°РЅРёС‡РµРЅРёРµ РїРѕР·РёС†РёРё РІРЅСѓС‚СЂРё РєР°СЂС‚С‹.
   Vector2 clampToMap(Vector2 p) {
     final x = p.x.clamp(32.0, mapSize.x - 32.0);
     final y = p.y.clamp(32.0, mapSize.y - 32.0);
     return Vector2(x, y);
   }
-
-  List<TiledObject> objectsFromLayer(String layerName) {
-    final tiled = _tiled;
-    if (tiled == null) return const <TiledObject>[];
-
-    final group = tiled.tileMap.getLayer<ObjectGroup>(layerName);
-    if (group == null) return const <TiledObject>[];
-
-    return List<TiledObject>.from(group.objects);
-  }
-
-  ({String tilesetName, int localId})? gidInfo(int gid) {
-    final tiled = _tiled;
-    if (tiled == null) return null;
-    if (gid <= 0) return null;
-
-    final cleanGid = _clearGidFlags(gid);
-    final tileset = tiled.tileMap.map.tilesetByTileGId(cleanGid);
-    final firstGid = tileset.firstGid ?? 0;
-    return (
-      tilesetName: tileset.name ?? '',
-      localId: cleanGid - firstGid,
-    );
-  }
-
-  int _clearGidFlags(int gid) => gid & 0x1FFFFFFF;
 
   Future<TiledComponent?> _loadTiledMap() async {
     try {
@@ -102,6 +80,7 @@ class WorldMap extends World {
       final size = Vector2(obj.width, obj.height);
       if (size.x <= 0 || size.y <= 0) continue;
 
+      _collisionRects.add(Rect.fromLTWH(obj.x, obj.y, size.x, size.y));
       add(
         _TiledCollisionBlock(
           position: Vector2(obj.x, obj.y),
@@ -131,7 +110,7 @@ class _MapBackground extends PositionComponent {
   }
 }
 
-class _TiledCollisionBlock extends PositionComponent with CollisionCallbacks {
+class _TiledCollisionBlock extends PositionComponent with CollisionCallbacks, SolidObstacle {
   _TiledCollisionBlock({
     required Vector2 position,
     required Vector2 size,
@@ -145,6 +124,9 @@ class _TiledCollisionBlock extends PositionComponent with CollisionCallbacks {
 
   final bool isEllipse;
   final bool debugDraw;
+
+  @override
+  Rect get collisionRect => Rect.fromLTWH(position.x, position.y, size.x, size.y);
 
   @override
   Future<void> onLoad() async {

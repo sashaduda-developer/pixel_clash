@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:pixel_clash/game/components/combat/combat_event.dart';
 import 'package:pixel_clash/game/components/combat/damageable.dart';
 import 'package:pixel_clash/game/components/enemies/enemy_component.dart';
+import 'package:pixel_clash/game/components/interactables/solid_obstacle.dart';
 import 'package:pixel_clash/game/components/player/player_component.dart';
 import 'package:pixel_clash/game/render/pixel_perfect.dart';
 
@@ -164,6 +165,11 @@ class ProjectileArrow extends PositionComponent with CollisionCallbacks {
     PositionComponent other,
   ) {
     super.onCollisionStart(intersectionPoints, other);
+
+    if (other is SolidObstacle) {
+      removeFromParent();
+      return;
+    }
 
     if (other is! Damageable) return;
 

@@ -44,6 +44,8 @@ flutter:
     - assets/images/enemies/Greatsword-Skeleton/
     - assets/images/enemies/Greatsword-Skeleton-Elite/
     - assets/images/enemies/Lancer/
-    - assets/maps/
-    - assets/maps/tiles/
-    - assets/maps/tilesets/
+    - assets/maps/cemetery/
+    - assets/maps/cemetery/objects/
+    - assets/maps/cemetery/objects/altar/
+    - assets/maps/cemetery/tiles/
+    - assets/maps/cemetery/tilesets/

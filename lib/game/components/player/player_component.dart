@@ -14,6 +14,7 @@ import 'package:pixel_clash/game/components/player/hero_type.dart';
 import 'package:pixel_clash/game/components/player/hero_visuals.dart';
 import 'package:pixel_clash/game/components/player/player_attack_behavior.dart';
 import 'package:pixel_clash/game/components/player/player_stats.dart';
+import 'package:pixel_clash/game/components/interactables/solid_obstacle.dart';
 import 'package:pixel_clash/game/pixel_clash_game.dart';
 import 'package:pixel_clash/game/ui/damage_number_component.dart';
 import 'package:pixel_clash/game/ui/hit_particles.dart';
@@ -111,6 +112,62 @@ class PlayerComponent extends PositionComponent
     );
     _applyVisuals(visuals);
   }
+
+
+  @override
+  void onCollisionStart(Set<Vector2> intersectionPoints, PositionComponent other) {
+    super.onCollisionStart(intersectionPoints, other);
+    if (other is SolidObstacle) {
+      _resolveObstacleCollision(other.collisionRect);
+    }
+  }
+
+  @override
+  void onCollision(Set<Vector2> intersectionPoints, PositionComponent other) {
+    super.onCollision(intersectionPoints, other);
+    if (other is SolidObstacle) {
+      _resolveObstacleCollision(other.collisionRect);
+    }
+  }
+
+  void _resolveObstacleCollision(Rect obstacleRect) {
+    final playerRect = _collisionRect();
+    if (!playerRect.overlaps(obstacleRect)) return;
+
+    final playerCenter = playerRect.center;
+    final obstacleCenter = obstacleRect.center;
+    final dx = playerCenter.dx - obstacleCenter.dx;
+    final dy = playerCenter.dy - obstacleCenter.dy;
+
+    final overlapX = (obstacleRect.width / 2 + playerRect.width / 2) - dx.abs();
+    final overlapY = (obstacleRect.height / 2 + playerRect.height / 2) - dy.abs();
+    if (overlapX <= 0 || overlapY <= 0) return;
+
+    const slop = 0.6;
+    final pushXMag = overlapX - slop;
+    final pushYMag = overlapY - slop;
+    if (pushXMag <= 0 || pushYMag <= 0) return;
+
+    if (overlapX < overlapY) {
+      final pushX = (dx == 0) ? pushXMag : dx.sign * pushXMag;
+      position.add(Vector2(pushX, 0));
+    } else {
+      final pushY = (dy == 0) ? pushYMag : dy.sign * pushYMag;
+      position.add(Vector2(0, pushY));
+    }
+
+    position = game.worldMap.clampToMap(position);
+  }
+
+  Rect _collisionRect() {
+    final radius = _hitbox.radius;
+    return Rect.fromCenter(
+      center: Offset(position.x, position.y),
+      width: radius * 2,
+      height: radius * 2,
+    );
+  }
+
 
   @override
   void update(double dt) {

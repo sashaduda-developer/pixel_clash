@@ -1,10 +1,10 @@
 import 'dart:math';
-import 'dart:ui' as ui;
-
 import 'package:flame/cache.dart';
 import 'package:flame/collisions.dart';
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
+import 'package:pixel_clash/game/components/interactables/interaction_aura_component.dart';
+import 'package:pixel_clash/game/components/interactables/solid_obstacle.dart';
 import 'package:pixel_clash/game/pixel_clash_game.dart';
 import 'package:pixel_clash/game/render/pixel_perfect.dart';
 
@@ -12,22 +12,19 @@ import 'package:pixel_clash/game/render/pixel_perfect.dart';
 ///
 /// Сейчас награда будет тестовая (позже заменим на LootTable).
 class ChestComponent extends PositionComponent
-    with HasGameReference<PixelClashGame>, CollisionCallbacks {
+    with HasGameReference<PixelClashGame>, CollisionCallbacks, SolidObstacle {
   ChestComponent({
     required super.position,
     this.openTime = 2.0,
-    this.interactRadius = 54,
+    this.interactRadius = 62,
   });
 
-  static const double _tileSize = 48;
-  static const int _tilesetColumns = 7;
-  static const String _tilesetPath = 'tiles/Cemetery_Objects.png';
-  static const int _coffinTopTileId = 21;
-  static const int _coffinBottomTileId = 28;
+  static const String _spritePath = 'cemetery/objects/chest.png';
 
   static final Images _mapImages = Images(prefix: 'assets/maps/');
-  static Sprite? _coffinTopSprite;
-  static Sprite? _coffinBottomSprite;
+  static Sprite? _chestSprite;
+  static Vector2? _chestSpriteSize;
+  InteractionAuraComponent? _aura;
 
   final double openTime;
   final double interactRadius;
@@ -40,61 +37,56 @@ class ChestComponent extends PositionComponent
   @override
   Future<void> onLoad() async {
     await super.onLoad();
-    size = Vector2(_tileSize, _tileSize * 2);
+    await _ensureSprite();
+    size = _chestSpriteSize ?? Vector2.all(48);
     anchor = Anchor.center;
 
-    await _ensureSprites();
-    _buildSprites();
+    _buildAura();
+    _buildSprite();
     _buildHitbox();
   }
 
-  Future<void> _ensureSprites() async {
-    if (_coffinTopSprite != null && _coffinBottomSprite != null) return;
-
-    final image = await _mapImages.load(_tilesetPath);
-    _coffinTopSprite ??= _spriteFromTile(image, _coffinTopTileId);
-    _coffinBottomSprite ??= _spriteFromTile(image, _coffinBottomTileId);
+  void _buildAura() {
+    final aura = InteractionAuraComponent(
+      radius: interactRadius,
+      color: const Color(0xFFC28C43),
+    )..priority = -1;
+    aura.position = size / 2;
+    add(aura);
+    _aura = aura;
   }
 
-  Sprite _spriteFromTile(ui.Image image, int tileId) {
-    final col = tileId % _tilesetColumns;
-    final row = tileId ~/ _tilesetColumns;
-    final src = Vector2(col * _tileSize, row * _tileSize);
-    return Sprite(
-      image,
-      srcPosition: src,
-      srcSize: Vector2.all(_tileSize),
+  Future<void> _ensureSprite() async {
+    if (_chestSprite != null && _chestSpriteSize != null) return;
+
+    final image = await _mapImages.load(_spritePath);
+    _chestSprite ??= Sprite(image);
+    _chestSpriteSize ??= Vector2(
+      image.width.toDouble(),
+      image.height.toDouble(),
     );
   }
 
-  void _buildSprites() {
-    final top = _coffinTopSprite;
-    final bottom = _coffinBottomSprite;
-    if (top == null || bottom == null) return;
+  void _buildSprite() {
+    final sprite = _chestSprite;
+    if (sprite == null) return;
 
     add(
       SpriteComponent(
-        sprite: top,
-        size: Vector2(_tileSize, _tileSize),
+        sprite: sprite,
+        size: size,
         anchor: Anchor.topLeft,
         position: Vector2.zero(),
-        paint: pixelPaint(),
-      ),
-    );
-
-    add(
-      SpriteComponent(
-        sprite: bottom,
-        size: Vector2(_tileSize, _tileSize),
-        anchor: Anchor.topLeft,
-        position: Vector2(0, _tileSize),
         paint: pixelPaint(),
       ),
     );
   }
 
   void _buildHitbox() {
-    final hitboxSize = Vector2(_tileSize - 12, _tileSize - 12);
+    final hitboxSize = Vector2(
+      max(8.0, size.x - 12),
+      max(8.0, size.y - 12),
+    );
     _hitbox = RectangleHitbox(
       size: hitboxSize,
       position: Vector2(
@@ -103,6 +95,14 @@ class ChestComponent extends PositionComponent
       ),
     )..collisionType = CollisionType.passive;
     add(_hitbox);
+  }
+
+  @override
+  Rect get collisionRect => _hitboxWorldRect();
+
+  Rect _hitboxWorldRect() {
+    final topLeft = position + _hitbox.position - (size / 2);
+    return Rect.fromLTWH(topLeft.x, topLeft.y, _hitbox.size.x, _hitbox.size.y);
   }
 
   @override
@@ -137,21 +137,28 @@ class ChestComponent extends PositionComponent
     if (!_opened && _progress > 0) {
       final t = (_progress / openTime).clamp(0.0, 1.0);
 
-      final center = Offset(size.x / 2, -10);
-      const radius = 10.0;
+      final center = Offset(size.x / 2, -18);
+      const radius = 11.0;
 
       final bg = Paint()
-        ..color = const Color(0x33000000)
+        ..color = const Color(0x22000000)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3;
 
-      final fg = Paint()
-        ..color = const Color(0xFF66BB6A)
+      final glow = Paint()
+        ..color = const Color(0x55C28C43)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 3
+        ..strokeWidth = 6
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
+
+      final fg = Paint()
+        ..color = const Color(0xFFC28C43)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3.2
         ..strokeCap = StrokeCap.round;
 
       canvas.drawCircle(center, radius, bg);
+      canvas.drawCircle(center, radius, glow);
 
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
@@ -167,6 +174,6 @@ class ChestComponent extends PositionComponent
     // Пока просто сигналим игре: "сундук открыт".
     // Позже здесь будет конкретный loot roll.
     game.onChestOpened();
-    removeFromParent();
+    _aura?.removeFromParent();
   }
 }
