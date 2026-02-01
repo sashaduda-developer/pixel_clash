@@ -143,7 +143,7 @@ class PlayerComponent extends PositionComponent
     final overlapY = (obstacleRect.height / 2 + playerRect.height / 2) - dy.abs();
     if (overlapX <= 0 || overlapY <= 0) return;
 
-    const slop = 0.6;
+    const slop = 2.2;
     final pushXMag = overlapX - slop;
     final pushYMag = overlapY - slop;
     if (pushXMag <= 0 || pushYMag <= 0) return;
@@ -257,6 +257,8 @@ class PlayerComponent extends PositionComponent
         final p = c.position;
         if (!visible.contains(Offset(p.x, p.y))) continue;
       }
+
+      if (!game.worldMap.hasLineOfSight(position, c.position)) continue;
 
       final d2 = c.position.distanceToSquared(position);
       if (d2 > range * range) continue;

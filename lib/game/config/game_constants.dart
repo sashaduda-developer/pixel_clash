@@ -28,6 +28,8 @@ abstract class GameConstants {
   // Минимальные дистанции для интерактивов.
   static const double interactableMinDistFromPlayer = 220;
   static const double interactableMinDistBetween = 140;
+  static const double altarMinDistanceBetween = 900;
+  static const double chestMinDistanceBetween = 360;
   static const int interactableSpawnAttempts = 60;
   static const double keyMinDistanceBetween = 900;
 }

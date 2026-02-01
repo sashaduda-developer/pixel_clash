@@ -216,7 +216,9 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
         anchor: Anchor.topLeft,
       ),
     );
-    overlays.add(Overlays.heroSelect);
+    if (!overlays.isActive(Overlays.startMenu)) {
+      overlays.add(Overlays.startMenu);
+    }
   }
 
   @override
@@ -581,17 +583,31 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
 
     const chestCount = 7;
     final chestSize = Vector2(48, 48);
+    final chestPositions = <Vector2>[];
     for (var i = 0; i < chestCount; i++) {
       final pos = _findFreeSizedPoint(
-        mapRng,
-        used,
-        usedRects,
-        collisionRects,
-        chestSize,
-        avoidPoint,
-      );
+            mapRng,
+            used,
+            usedRects,
+            collisionRects,
+            chestSize,
+            avoidPoint,
+            minBetweenExtra: GameConstants.chestMinDistanceBetween,
+            extraAvoid: chestPositions,
+          ) ??
+          _findFreeSizedPoint(
+            mapRng,
+            used,
+            usedRects,
+            collisionRects,
+            chestSize,
+            avoidPoint,
+            minBetweenExtra: GameConstants.chestMinDistanceBetween * 0.7,
+            extraAvoid: chestPositions,
+          );
       if (pos == null) continue;
       used.add(pos);
+      chestPositions.add(pos);
       usedRects.add(
         Rect.fromCenter(
           center: Offset(pos.x, pos.y),
@@ -610,17 +626,31 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
 
     const altarCount = 4;
     final altarSize = Vector2(96 * 0.82, 144 * 0.82);
+    final altarPositions = <Vector2>[];
     for (var i = 0; i < altarCount; i++) {
       final pos = _findFreeSizedPoint(
-        mapRng,
-        used,
-        usedRects,
-        collisionRects,
-        altarSize,
-        avoidPoint,
-      );
+            mapRng,
+            used,
+            usedRects,
+            collisionRects,
+            altarSize,
+            avoidPoint,
+            minBetweenExtra: GameConstants.altarMinDistanceBetween,
+            extraAvoid: altarPositions,
+          ) ??
+          _findFreeSizedPoint(
+            mapRng,
+            used,
+            usedRects,
+            collisionRects,
+            altarSize,
+            avoidPoint,
+            minBetweenExtra: GameConstants.altarMinDistanceBetween * 0.7,
+            extraAvoid: altarPositions,
+          );
       if (pos == null) continue;
       used.add(pos);
+      altarPositions.add(pos);
       usedRects.add(
         Rect.fromCenter(
           center: Offset(pos.x, pos.y),
@@ -713,10 +743,12 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     Vector2 avoidPoint, {
     double? minFromPlayer,
     double? minBetween,
+    double? minBetweenExtra,
     List<Vector2>? extraAvoid,
   }) {
     final minFromP = minFromPlayer ?? GameConstants.interactableMinDistFromPlayer;
     final minBetweenP = minBetween ?? GameConstants.interactableMinDistBetween;
+    final minBetweenExtraP = minBetweenExtra ?? minBetweenP;
     const maxAttempts = GameConstants.interactableSpawnAttempts;
 
     for (var i = 0; i < maxAttempts; i++) {
@@ -736,7 +768,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
 
       if (extraAvoid != null) {
         for (final e in extraAvoid) {
-          if (p.distanceToSquared(e) < minBetweenP * minBetweenP) {
+          if (p.distanceToSquared(e) < minBetweenExtraP * minBetweenExtraP) {
             ok = false;
             break;
           }
@@ -1229,6 +1261,7 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
     Vector2 center,
     double radius, {
     Set<EnemyComponent>? exclude,
+    bool requireLineOfSight = true,
   }) {
     final r2 = radius * radius;
 
@@ -1239,6 +1272,10 @@ class PixelClashGame extends FlameGame with HasCollisionDetection {
       if (c is! EnemyComponent) continue;
       if (c.isDead || c.isRemoving) continue;
       if (exclude != null && exclude.contains(c)) continue;
+
+      if (requireLineOfSight && !worldMap.hasLineOfSight(center, c.position)) {
+        continue;
+      }
 
       final d2 = c.position.distanceToSquared(center);
       if (d2 > r2) continue;

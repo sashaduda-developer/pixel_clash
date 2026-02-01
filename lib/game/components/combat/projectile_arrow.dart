@@ -167,6 +167,7 @@ class ProjectileArrow extends PositionComponent with CollisionCallbacks {
     super.onCollisionStart(intersectionPoints, other);
 
     if (other is SolidObstacle) {
+      if (other is ProjectilePassThrough) return;
       removeFromParent();
       return;
     }

@@ -65,6 +65,16 @@ class EnemyComponent extends PositionComponent
   // Простое избегание препятствий.
   Vector2 _avoidDir = Vector2.zero();
   double _avoidTimeLeft = 0;
+  Vector2 _lastPos = Vector2.zero();
+  double _stuckTime = 0;
+  double _stuckCooldown = 0;
+  int _stuckTurn = 1;
+  Vector2 _wallFollowDir = Vector2.zero();
+  double _wallFollowLeft = 0;
+  double _cornerTime = 0;
+  List<Vector2> _path = <Vector2>[];
+  int _pathIndex = 0;
+  double _pathRecalcLeft = 0;
 
   // Последний атакующий (для EnemyKilledEvent).
   PositionComponent? _lastAttacker;
@@ -100,6 +110,7 @@ class EnemyComponent extends PositionComponent
 
     size = Vector2.all(bodySize);
     anchor = Anchor.center;
+    _lastPos = position.clone();
 
     _hitbox = CircleHitbox(radius: hitboxRadius);
     add(_hitbox);
@@ -224,6 +235,10 @@ class EnemyComponent extends PositionComponent
     _bleedLeft = max(0, _bleedLeft - dt);
     _burnPhase += dt * 8.0;
     _avoidTimeLeft = max(0, _avoidTimeLeft - dt);
+    _stuckCooldown = max(0, _stuckCooldown - dt);
+    _wallFollowLeft = max(0, _wallFollowLeft - dt);
+    _cornerTime = max(0, _cornerTime - dt);
+    _pathRecalcLeft = max(0, _pathRecalcLeft - dt);
   }
 
   /// Визуальные эффекты дотов (поджог/кровотечение).
@@ -262,12 +277,61 @@ class EnemyComponent extends PositionComponent
 
     if (_freezeLeft > 0 || _stunLeft > 0) return;
 
-    final dir = (p.position - position);
+    final Vector2 targetPos = p.position.clone();
+    final collisionRects = game.worldMap.collisionRects;
+    if (_pathRecalcLeft <= 0) {
+      _pathRecalcLeft = 0.7;
+      if (_hasLineOfSight(position, targetPos, collisionRects)) {
+        _path = <Vector2>[];
+        _pathIndex = 0;
+      } else {
+        _path = game.worldMap.findPath(position, targetPos);
+        _pathIndex = 0;
+      }
+    }
+
+    var target = targetPos.clone();
+    if (_path.isNotEmpty) {
+      while (_pathIndex < _path.length &&
+          position.distanceToSquared(_path[_pathIndex]) < 24 * 24) {
+        _pathIndex += 1;
+      }
+      if (_pathIndex < _path.length) {
+        target = _path[_pathIndex];
+      } else {
+        _path = <Vector2>[];
+        _pathIndex = 0;
+      }
+    }
+
+    final dir = (target - position);
     if (dir.length2 <= 0.001) return;
 
     dir.normalize();
     var moveDir = dir;
-    if (_avoidTimeLeft > 0 && _avoidDir.length2 > 0.001) {
+    Vector2 avoid = Vector2.zero();
+
+    if (_path.isNotEmpty) {
+      _wallFollowLeft = 0;
+      _avoidTimeLeft = 0;
+    } else if (_wallFollowLeft > 0 && _wallFollowDir.length2 > 0.001) {
+      final blended = (dir * 0.35) + (_wallFollowDir * 1.0);
+      if (blended.length2 > 0.001) {
+        blended.normalize();
+        moveDir = blended;
+      } else {
+        moveDir = _wallFollowDir;
+      }
+    } else {
+    // Дополнительное избегание препятствий по карте.
+    avoid = _computeObstacleAvoidance(dir);
+    if (avoid.length2 > 0.001) {
+      final blended = (dir * 0.7) + (avoid * 0.5);
+      if (blended.length2 > 0.001) {
+        blended.normalize();
+        moveDir = blended;
+      }
+    } else if (_avoidTimeLeft > 0 && _avoidDir.length2 > 0.001) {
       // Небольшое смешивание направления к игроку и ухода от препятствия.
       final blended = (dir * 0.6) + (_avoidDir * 0.8);
       if (blended.length2 > 0.001) {
@@ -275,9 +339,14 @@ class EnemyComponent extends PositionComponent
         moveDir = blended;
       }
     }
+    }
 
     final slowMult = (_slowLeft > 0) ? (1.0 - _slowPct) : 1.0;
     position += moveDir * speed * slowMult * dt;
+
+    if (_path.isEmpty) {
+      _updateStuckState(dir, avoid, p.position, dt);
+    }
   }
 
   // ===== status effects =====
@@ -464,7 +533,7 @@ class EnemyComponent extends PositionComponent
     final overlapY = (obstacleRect.height / 2 + enemyRect.height / 2) - dy.abs();
     if (overlapX <= 0 || overlapY <= 0) return;
 
-    const slop = 0.6;
+    const slop = 2.2;
     final pushXMag = overlapX - slop;
     final pushYMag = overlapY - slop;
     if (pushXMag <= 0 || pushYMag <= 0) return;
@@ -472,9 +541,11 @@ class EnemyComponent extends PositionComponent
     if (overlapX < overlapY) {
       final pushX = (dx == 0) ? pushXMag : dx.sign * pushXMag;
       position.add(Vector2(pushX, 0));
+      _setWallFollowDir(dirToPlayer(), axisX: true);
     } else {
       final pushY = (dy == 0) ? pushYMag : dy.sign * pushYMag;
       position.add(Vector2(0, pushY));
+      _setWallFollowDir(dirToPlayer(), axisX: false);
     }
 
     position = game.worldMap.clampToMap(position);
@@ -485,6 +556,143 @@ class EnemyComponent extends PositionComponent
       away.normalize();
       _avoidDir = away;
       _avoidTimeLeft = 0.35;
+    }
+  }
+
+  Vector2 dirToPlayer() {
+    final p = game.player;
+    if (p == null) return Vector2(1, 0);
+    final d = (p.position - position);
+    if (d.length2 > 0.001) d.normalize();
+    return d;
+  }
+
+  void _setWallFollowDir(Vector2 desiredDir, {required bool axisX}) {
+    // Если упёрлись по X, то двигаться вдоль оси Y; если по Y — вдоль X.
+    final a = axisX ? Vector2(0, 1) : Vector2(1, 0);
+    final b = axisX ? Vector2(0, -1) : Vector2(-1, 0);
+    _wallFollowDir =
+        (a.dot(desiredDir) >= b.dot(desiredDir)) ? a : b;
+    _wallFollowLeft = 0.9;
+  }
+
+  bool _hasLineOfSight(Vector2 from, Vector2 to, List<Rect> rects) {
+    for (final r in rects) {
+      if (_segmentRectHitT(from, to, r) != null) return false;
+    }
+    return true;
+  }
+
+  double? _segmentRectHitT(Vector2 a, Vector2 b, Rect r) {
+    final ax = a.x;
+    final ay = a.y;
+    final bx = b.x;
+    final by = b.y;
+    final dx = bx - ax;
+    final dy = by - ay;
+
+    double t0 = 0.0;
+    double t1 = 1.0;
+
+    bool clip(double p, double q) {
+      if (p == 0) return q >= 0;
+      final t = q / p;
+      if (p < 0) {
+        if (t > t1) return false;
+        if (t > t0) t0 = t;
+      } else {
+        if (t < t0) return false;
+        if (t < t1) t1 = t;
+      }
+      return true;
+    }
+
+    if (!clip(-dx, ax - r.left)) return null;
+    if (!clip(dx, r.right - ax)) return null;
+    if (!clip(-dy, ay - r.top)) return null;
+    if (!clip(dy, r.bottom - ay)) return null;
+
+    return t0;
+  }
+
+  Vector2 _computeObstacleAvoidance(Vector2 desiredDir) {
+    final rects = game.worldMap.collisionRects;
+    if (rects.isEmpty) return Vector2.zero();
+
+    const avoidRadius = 70.0;
+    const lookAhead = 28.0;
+    final pos = position;
+    var steer = Vector2.zero();
+    var touched = false;
+
+    for (final r in rects) {
+      final closest = Offset(
+        pos.x.clamp(r.left, r.right),
+        pos.y.clamp(r.top, r.bottom),
+      );
+      final dx = pos.x - closest.dx;
+      final dy = pos.y - closest.dy;
+      final dist2 = dx * dx + dy * dy;
+      if (dist2 <= 0.0001) continue;
+      final dist = sqrt(dist2);
+      if (dist > avoidRadius) continue;
+      touched = true;
+
+      final strength = 1.0 - (dist / avoidRadius);
+      final away = Vector2(dx / dist, dy / dist) * (strength * 0.8);
+      steer += away;
+    }
+
+    // Быстрый "взгляд вперёд": если следующая позиция врезается в препятствие —
+    // усиливаем уход в сторону.
+    final ahead = pos + desiredDir * lookAhead;
+    if (touched) {
+      for (final r in rects) {
+        if (r.contains(Offset(ahead.x, ahead.y))) {
+          final perp = Vector2(-desiredDir.y, desiredDir.x) * _stuckTurn.toDouble();
+          steer += perp * 0.4;
+          break;
+        }
+      }
+    }
+
+    if (!touched) return Vector2.zero();
+    if (steer.length2 > 0.001) {
+      steer.normalize();
+    }
+
+    return steer;
+  }
+
+  void _updateStuckState(Vector2 desiredDir, Vector2 avoid, Vector2 playerPos, double dt) {
+    if (avoid.length2 < 0.001 && _wallFollowLeft <= 0) {
+      _stuckTime = max(0, _stuckTime - dt * 2.0);
+      return;
+    }
+
+    final moved = position.distanceTo(_lastPos);
+    _lastPos.setFrom(position);
+
+    if (moved < 0.8) {
+      _stuckTime += dt;
+    } else {
+      _stuckTime = max(0, _stuckTime - dt * 2.0);
+    }
+
+    if (_stuckCooldown <= 0 && _stuckTime > 0.55) {
+      _stuckTime = 0.0;
+      _stuckCooldown = 0.6;
+      _stuckTurn = -_stuckTurn;
+      if (_wallFollowLeft > 0) {
+        // В углу: разворачиваемся вдоль стены.
+        _wallFollowDir = _wallFollowDir * -1;
+        _wallFollowLeft = 1.0;
+        _cornerTime = 0.6;
+      } else {
+        _avoidDir = Vector2(-desiredDir.y, desiredDir.x) * _stuckTurn.toDouble();
+        _avoidTimeLeft = 0.5;
+      }
+
     }
   }
 

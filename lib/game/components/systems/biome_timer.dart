@@ -33,13 +33,6 @@ class BiomeTimer extends Component {
     onTimeChanged(_timeLeft);
   }
 
-  @override
-  void update(double dt) {
-    super.update(dt);
-
-    // Логика таймера обновляется реальным временем через Timer.
-  }
-
   void _tick() {
     if (!_isRunning || _isOver) return;
 

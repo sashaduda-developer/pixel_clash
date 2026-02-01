@@ -5,6 +5,7 @@ import 'package:pixel_clash/game/pixel_clash_game.dart';
 import 'package:pixel_clash/game/ui/abilities_overlay.dart';
 import 'package:pixel_clash/game/ui/boss_reward_overlay.dart';
 import 'package:pixel_clash/game/ui/hero_select_overlay.dart';
+import 'package:pixel_clash/game/ui/start_menu_overlay.dart';
 import 'package:pixel_clash/game/ui/hud_overlay.dart';
 import 'package:pixel_clash/game/ui/overlays.dart';
 import 'package:pixel_clash/game/ui/reward_pick_overlay.dart';
@@ -26,9 +27,10 @@ class PixelClashApp extends StatelessWidget {
         body: GameWidget<PixelClashGame>(
           game: game,
           initialActiveOverlays: const [
-            Overlays.heroSelect,
+            Overlays.startMenu,
           ],
           overlayBuilderMap: {
+            Overlays.startMenu: (_, g) => StartMenuOverlay(game: g),
             Overlays.heroSelect: (_, g) => HeroSelectOverlay(game: g),
             Overlays.hud: (_, g) => HudOverlay(game: g),
             Overlays.abilities: (_, g) => AbilitiesOverlay(game: g),

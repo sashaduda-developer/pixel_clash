@@ -1,4 +1,5 @@
 class Overlays {
+  static const String startMenu = 'start_menu';
   static const String heroSelect = 'hero_select';
   static const String hud = 'hud';
   static const String abilities = 'abilities';
